@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { 
   Plus, Edit, Trash2, Package, Truck, MessageSquare, 
   LogOut, LayoutDashboard, Settings, Search, Filter, 
-  ChevronRight, AlertCircle, CheckCircle2, X, Eye
+  ChevronRight, AlertCircle, CheckCircle2, X, Eye, Menu
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
