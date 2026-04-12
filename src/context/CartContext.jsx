@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 
 const CartContext = createContext();
 
@@ -26,6 +27,14 @@ export const CartProvider = ({ children }) => {
         );
       }
       return [...prev, { ...product, quantity: 1 }];
+    });
+    toast.success(`${product.name} pridané do košíka`, {
+      style: {
+        background: '#2d2f2b',
+        color: '#DFFF00',
+        borderRadius: '0',
+        fontWeight: 'bold',
+      }
     });
     setIsCartOpen(true);
   };

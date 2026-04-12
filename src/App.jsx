@@ -13,12 +13,14 @@ import Shipping from './pages/Shipping'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CartDrawer from './components/CartDrawer'
+import { Toaster } from 'react-hot-toast'
 
 function App() {
   return (
     <CartProvider>
       <Router>
         <div className="flex flex-col min-h-screen">
+          <Toaster position="bottom-right" />
           <Navbar />
           <CartDrawer />
           <main className="flex-grow">

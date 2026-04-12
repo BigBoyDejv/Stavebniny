@@ -22,9 +22,9 @@ const Home = () => {
             transition={{ duration: 0.8 }}
             className="max-w-3xl"
           >
-            <span className="inline-block font-label text-[0.75rem] font-bold text-primary uppercase tracking-[0.2em] mb-4">Stavebniny Ľubeľa</span>
-            <h1 className="font-headline text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
-              Všetko pre vašu stavbu na jednom mieste
+            <span className="inline-block font-label text-[0.75rem] font-bold text-primary uppercase tracking-[0.3em] mb-6 border-b-2 border-primary/30 pb-1">Stavebniny Ľubeľa</span>
+            <h1 className="font-headline text-5xl md:text-8xl font-black text-white mb-10 leading-[0.9] tracking-tighter">
+              Všetko pre vašu <span className="bg-gradient-to-r from-primary via-[#daf900] to-white bg-clip-text text-transparent">stavbu</span> na jednom mieste
             </h1>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/katalog" className="bg-primary text-on-primary px-8 py-4 font-label font-bold tracking-wide flex items-center justify-center gap-2 hover:scale-105 transition-transform">

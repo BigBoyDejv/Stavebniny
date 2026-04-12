@@ -3,14 +3,11 @@ import { supabase } from '../lib/supabase'
 import { 
   Plus, Edit, Trash2, Package, Truck, MessageSquare, 
   LogOut, LayoutDashboard, Settings, Search, Filter, 
-  ChevronRight, AlertCircle, CheckCircle2, X
+  ChevronRight, AlertCircle, CheckCircle2, X, Eye
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-
-function cn(...inputs) {
-  return twMerge(clsx(inputs))
-}
+import { cn } from '../lib/utils'
 
 const Admin = () => {
   const [session, setSession] = useState(null)
@@ -22,6 +19,8 @@ const Admin = () => {
   
   // Form State for Products
   const [showModal, setShowModal] = useState(false)
+  const [showOrderDetails, setShowOrderDetails] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState(null)
   const [editingItem, setEditingItem] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -89,6 +88,21 @@ const Admin = () => {
       alert(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleViewOrder = async (order) => {
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('order_id', order.id)
+      
+      if (error) throw error
+      setSelectedOrder({ ...order, items: data })
+      setShowOrderDetails(true)
+    } catch (error) {
+      console.error('Error fetching order items:', error.message)
     }
   }
 
@@ -204,18 +218,27 @@ const Admin = () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-right">
-                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true); }}
-                          className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
-                        ><Edit size={16}/></button>
-                        <button 
-                          onClick={() => handleDelete(item.id)}
-                          className="p-2 hover:bg-error/10 text-error transition-colors"
-                        ><Trash2 size={16}/></button>
-                      </div>
-                    </td>
+                     <td className="px-6 py-5 text-right">
+                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                         {view === 'orders' && (
+                           <button 
+                             onClick={() => handleViewOrder(item)}
+                             className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
+                             title="Zobraziť detaily"
+                           ><Eye size={16}/></button>
+                         )}
+                         {view === 'products' && (
+                           <button 
+                             onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true); }}
+                             className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
+                           ><Edit size={16}/></button>
+                         )}
+                         <button 
+                           onClick={() => handleDelete(item.id)}
+                           className="p-2 hover:bg-error/10 text-error transition-colors"
+                         ><Trash2 size={16}/></button>
+                       </div>
+                     </td>
                   </tr>
                 ))}
               </tbody>
@@ -371,6 +394,70 @@ const LoginComponent = ({ setSession }) => {
           </div>
           <button className="w-full bg-primary text-on-primary py-4 font-black uppercase tracking-widest mt-4">Prihlásiť sa</button>
         </form>
+        {/* Order Details Modal */}
+        {showOrderDetails && selectedOrder && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-[#2d2f2b]/60 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-3xl shadow-2xl relative flex flex-col max-h-[90vh]">
+              <button 
+                onClick={() => setShowOrderDetails(false)}
+                className="absolute top-6 right-6 text-outline hover:text-on-surface transition-colors"
+              ><X size={24}/></button>
+              
+              <div className="p-10 overflow-y-auto">
+                <div className="flex justify-between items-start mb-8">
+                  <div>
+                    <h2 className="text-3xl font-black tracking-tight mb-2">Objednávka #{selectedOrder.id.slice(0,8)}</h2>
+                    <p className="text-sm text-outline font-medium uppercase tracking-widest">
+                      {new Date(selectedOrder.created_at).toLocaleString('sk-SK')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-[10px] font-bold text-outline uppercase mb-1">Stav objednávky</span>
+                    <span className="bg-primary/20 text-[#546200] px-3 py-1 uppercase font-black text-xs tracking-wider">
+                      {selectedOrder.status || 'PRIJATÁ'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-12 mb-10 border-y border-outline/5 py-8">
+                  <div>
+                    <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Zákazník</h4>
+                    <p className="font-bold text-lg">{selectedOrder.customer_name}</p>
+                    <p className="text-on-surface-variant">{selectedOrder.customer_email}</p>
+                    <p className="text-on-surface-variant">{selectedOrder.customer_phone}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Doručovacia adresa</h4>
+                    <p className="text-on-surface-variant whitespace-pre-wrap">{selectedOrder.customer_address}</p>
+                  </div>
+                </div>
+
+                <h4 className="text-[10px] font-bold text-outline uppercase mb-4 tracking-widest">Položky objednávky</h4>
+                <div className="space-y-4">
+                  {selectedOrder.items?.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-4 border-b border-outline/5 last:border-0">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-surface flex items-center justify-center font-bold text-outline border border-outline/10 text-xs">
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <p className="font-bold">{item.product_name}</p>
+                          <p className="text-xs text-outline">{item.quantity} ks × {item.unit_price.toFixed(2)} €</p>
+                        </div>
+                      </div>
+                      <span className="font-black">{(item.quantity * item.unit_price).toFixed(2)} €</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-10 pt-6 border-t-2 border-primary/20 flex justify-between items-center text-xl font-black uppercase tracking-tight">
+                  <span>Celková suma:</span>
+                  <span className="text-primary-container bg-[#2d2f2b] px-4 py-2">{selectedOrder.total_price.toFixed(2)} €</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
