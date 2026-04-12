@@ -89,16 +89,25 @@ const Admin = () => {
     setLoading(true)
     try {
       const { data, error } = await supabase.from('categories').insert([categoryFormData]).select().single()
-      if (error) throw error
       
-      // Auto-select the new category in the form if we are creating one
-      setFormData(prev => ({ ...prev, category: data.name }))
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          alert('Táto kategória už existuje. Skúste ju vyhľadať v zozname (overte aj správny Typ produktu).')
+          // Optionally try to fetch the existing one to select it
+          const { data: existing } = await supabase.from('categories').select('*').eq('name', categoryFormData.name).single()
+          if (existing) setFormData(prev => ({ ...prev, category: existing.name }))
+        } else {
+          throw error
+        }
+      } else if (data) {
+        setFormData(prev => ({ ...prev, category: data.name }))
+      }
       
       setShowCategoryModal(false)
       await fetchCategories()
       if (view === 'categories') fetchData()
     } catch (err) {
-      alert(err.message)
+      alert('Chyba: ' + err.message)
     } finally {
       setLoading(false)
     }
