@@ -5,6 +5,9 @@
 truncate table products cascade;
 truncate table rental_items cascade;
 
+-- Zabezpečenie správnej schémy
+alter table if exists rental_items add column if not exists category text;
+
 -- 1. PRODUKTY (MATERIÁLY) - 30 Položiek
 insert into products (name, description, price, category, sku, stock_quantity, image_url) values
 -- HRUBÁ STAVBA (1-8)
