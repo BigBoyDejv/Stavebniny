@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Katalóg produktov | Stavebniny Ľubeľa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Work+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" href="style.css">
+    <script id="tailwind-config">
+          tailwind.config = {
+            darkMode: "class",
+            theme: {
+              extend: {
+                "colors": {
+                        "primary": "#DFFF00",
+                        "on-primary": "#2d2f2b",
+                        "surface": "#f7f7f0",
+                        "on-surface": "#2d2f2b",
+                        "surface-container": "#f0eded",
+                        "surface-container-low": "#f6f3f2",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e8e9e1",
+                        "on-surface-variant": "#474842",
+                        "outline": "#777870",
+                        "outline-variant": "#c8c8bc",
+                        "tertiary": "#8b3700",
+                        "error": "#ba1a1a"
+                },
+                "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                },
+                "fontFamily": {
+                        "headline": ["Work Sans"],
+                        "body": ["Inter"],
+                        "label": ["Work Sans"]
+                }
+              },
+            },
+          }
+    </script>
+</head>
+<body class="bg-surface font-body text-on-surface">
+    <!-- Navbar -->
+    <nav class="fixed top-0 w-full z-50 bg-[#f7f7f0]/80 backdrop-blur-md">
+        <div class="flex justify-between items-center px-8 py-4 max-w-[1920px] mx-auto">
+            <div class="text-2xl font-black tracking-tighter text-[#2d2f2b]">
+                STAVEBNINY
+            </div>
+            <div class="hidden md:flex items-center space-x-12">
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="index.html">Domov</a>
+                <a class="text-[#546200] border-b-2 border-[#daf900] pb-1 font-headline uppercase tracking-widest text-xs font-bold transition-all" href="katalog.html">Materiály</a>
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="pozicovna.html">Požičovňa</a>
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="kontakt.html">Kontakt</a>
+            </div>
+            <div class="flex items-center space-x-6">
+                <div class="flex space-x-4 items-center border-r border-[#e8e9e1] pr-6 mr-2">
+                    <span class="material-symbols-outlined text-[#2d2f2b] cursor-pointer hover:text-[#546200] transition-colors">shopping_cart</span>
+                    <span class="material-symbols-outlined text-[#2d2f2b] cursor-pointer hover:text-[#546200] transition-colors">account_circle</span>
+                </div>
+                <a href="admin.html" class="bg-[#daf900] text-[#505d00] px-5 py-2.5 font-headline uppercase tracking-widest text-xs font-bold scale-95 transition-all">
+                    Pro Portál
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-28 pb-16 px-8 max-w-[1440px] mx-auto min-h-screen">
+        <nav class="flex items-center gap-2 mb-8 text-sm font-label tracking-wide text-on-surface-variant">
+            <a class="hover:text-primary transition-colors" href="index.html">DOMOV</a>
+            <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+            <span class="text-on-surface font-semibold">STAVEBNÉ MATERIÁLY</span>
+        </nav>
+
+        <div class="flex flex-col lg:flex-row gap-12">
+            <!-- Sidebar Filters -->
+            <aside class="w-full lg:w-72 flex-shrink-0 space-y-10">
+                <section>
+                    <span class="block text-xs font-bold tracking-[0.05em] text-outline mb-4 uppercase">Kategórie</span>
+                    <ul class="space-y-2">
+                        <li><a class="flex items-center justify-between p-3 bg-primary text-on-primary font-bold" href="#">Murovací materiál <span class="material-symbols-outlined">keyboard_arrow_right</span></a></li>
+                        <li><a class="flex items-center justify-between p-3 hover:bg-surface-container-low transition-colors" href="#">Izolácie <span class="material-symbols-outlined">keyboard_arrow_right</span></a></li>
+                        <li><a class="flex items-center justify-between p-3 hover:bg-surface-container-low transition-colors" href="#">Strešné systémy <span class="material-symbols-outlined">keyboard_arrow_right</span></a></li>
+                        <li><a class="flex items-center justify-between p-3 hover:bg-surface-container-low transition-colors" href="#">Náradie <span class="material-symbols-outlined">keyboard_arrow_right</span></a></li>
+                    </ul>
+                </section>
+                
+                <section>
+                    <span class="block text-xs font-bold tracking-[0.05em] text-outline mb-4 uppercase">Výrobca</span>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input checked class="w-5 h-5 border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+                            <span class="text-sm group-hover:text-primary transition-colors">Wienerberger</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input class="w-5 h-5 border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+                            <span class="text-sm group-hover:text-primary transition-colors">Xella / Ytong</span>
+                        </label>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Product Grid -->
+            <div class="flex-1">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                    <div>
+                        <h1 class="text-3xl font-black tracking-tight mb-1">Murovací materiál</h1>
+                        <p class="text-on-surface-variant text-sm">Zobrazených 24 produktov</p>
+                    </div>
+                    <div class="flex items-center gap-3 w-full sm:w-auto">
+                        <select class="bg-surface-container-low border-none py-2 px-4 focus:ring-2 focus:ring-primary/20 cursor-pointer text-sm">
+                            <option>Najnovšie</option>
+                            <option>Cena: Od najlacnejšieho</option>
+                            <option>Cena: Od najdrahšieho</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <!-- Product 1 -->
+                    <div class="group relative bg-surface-container-lowest flex flex-col transition-all hover:bg-white border border-transparent hover:border-outline-variant">
+                        <div class="relative aspect-square overflow-hidden bg-surface-container-low">
+                            <img alt="Tehla Porotherm" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5Lnq48esyZ9b9Zmw4SSrHbtWVoSX2JWz3vQ9bbwuvqSnmb7nn2Io0QgSNJorHPQOv89TaMrDPISSWBAi8L2tYX5RjZZXNBZyUVUjMumQFAAgGiWYz0xgAnaHSH0Ba9dVaVlnSvhgbXdYwDKNBzbhLhEll2azUWn9T4FepWOhO2OKYZLZ0Jzi4zd9FHs5N9fvKiAu9Lu7e-HKdZ5WWTKYACBA5XgHC4ABJEAmRFC1cbORBA-ZMdG_B4VDeQQgsgsR5d_g7OXxCguUX"/>
+                            <div class="absolute top-3 left-3 bg-tertiary text-white font-label text-[10px] px-2 py-1 tracking-wide font-bold">AKCIA -10%</div>
+                        </div>
+                        <div class="p-6 flex flex-col flex-1">
+                            <span class="font-label text-[10px] text-outline tracking-wider uppercase mb-1">WIENERBERGER</span>
+                            <h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors hover:cursor-pointer">Porotherm 30 Profi Dryfix</h3>
+                            <p class="text-sm text-on-surface-variant mb-6 flex-1 line-clamp-2">Brúsená tehla pre murovanie na penu, vysoká tepelná izolácia.</p>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <span class="block text-xs text-outline line-through">3.45 €</span>
+                                    <span class="text-2xl font-black tracking-tight">2.99 €</span>
+                                    <span class="text-[10px] text-on-surface-variant ml-1">/ ks</span>
+                                </div>
+                                <button class="bg-primary text-on-primary w-12 h-12 flex items-center justify-center scale-95 active:scale-90 transition-transform">
+                                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_shopping_cart</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Product 2 -->
+                    <div class="group relative bg-surface-container-lowest flex flex-col transition-all hover:bg-white border border-transparent hover:border-outline-variant">
+                        <div class="relative aspect-square overflow-hidden bg-surface-container-low">
+                            <img alt="Ytong TVÁRNICA" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFHbdqamGNOUfPdIGIN3YPHPeSS3qPQlEwV4iYJBazraxkRNioxwkUgODIVHiWiVFZwA-iHzgLfULjdW3dn7lB_F7-xY4lXKcTKbw3JSL6X6OJrstlkgQ7KuAWE8Fv1AEyFVy44RdN3XAZxsbUNcCNkfEg7FK1v6OQKTZoprMWQuKDT5X5Cze3i6mbkef-nvdlxaY3utRrDhlgbdFDvEsgCNO4SuvWxaCAvsnN5i4tY84Y5tV0t0dqm7fdeDcHZ5ydhPlKz7c7Qx_q"/>
+                        </div>
+                        <div class="p-6 flex flex-col flex-1">
+                            <span class="font-label text-[10px] text-outline tracking-wider uppercase mb-1">XELLA</span>
+                            <h3 class="text-lg font-bold mb-2 group-hover:text-primary transition-colors hover:cursor-pointer">Ytong Lambda YQ P2-300</h3>
+                            <p class="text-sm text-on-surface-variant mb-6 flex-1 line-clamp-2">Pórobetónová tvárnica pre jednovrstvové murovanie bez zateplenia.</p>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <span class="text-2xl font-black tracking-tight">6.45 €</span>
+                                    <span class="text-[10px] text-on-surface-variant ml-1">/ ks</span>
+                                </div>
+                                <button class="bg-primary text-on-primary w-12 h-12 flex items-center justify-center scale-95 active:scale-90 transition-transform">
+                                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_shopping_cart</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="mt-16 flex justify-center gap-2">
+                    <button class="w-10 h-10 flex items-center justify-center bg-surface-container-low text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">chevron_left</span></button>
+                    <button class="w-10 h-10 flex items-center justify-center bg-primary text-on-primary font-bold">1</button>
+                    <button class="w-10 h-10 flex items-center justify-center bg-surface-container-low text-on-surface-variant hover:bg-primary/20 transition-colors font-medium">2</button>
+                    <button class="w-10 h-10 flex items-center justify-center bg-surface-container-low text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">chevron_right</span></button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#2d2f2b] w-full py-12 mt-auto">
+        <div class="max-w-[1440px] mx-auto px-8 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex flex-col md:flex-row gap-8 mb-8 md:mb-0">
+                <a class="text-[#adaea7] font-headline text-[10px] uppercase tracking-widest hover:text-white transition-colors" href="#">Ochrana údajov</a>
+                <a class="text-[#adaea7] font-headline text-[10px] uppercase tracking-widest hover:text-white transition-colors" href="#">Obchodné podmienky</a>
+            </div>
+            <div class="text-[#daf900] font-headline text-[10px] uppercase tracking-widest">
+                © 2024 STAVEBNINY ĽUBEĽA. VŠETKY PRÁVA VYHRADENÉ.
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

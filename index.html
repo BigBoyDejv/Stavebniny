@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Stavebniny Ľubeľa | Všetko pre vašu stavbu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Work+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" href="style.css">
+    <script id="tailwind-config">
+          tailwind.config = {
+            darkMode: "class",
+            theme: {
+              extend: {
+                "colors": {
+                        "primary": "#DFFF00",
+                        "on-primary": "#2d2f2b",
+                        "primary-container": "#DFFF00",
+                        "on-primary-container": "#505d00",
+                        "surface": "#f7f7f0",
+                        "on-surface": "#2d2f2b",
+                        "surface-container": "#f0eded",
+                        "surface-container-low": "#f6f3f2",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e8e9e1",
+                        "on-surface-variant": "#474842",
+                        "outline": "#777870",
+                        "outline-variant": "#c8c8bc",
+                        "tertiary": "#8b3700",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#b24800",
+                        "on-tertiary-container": "#ffe4d9",
+                        "error": "#ba1a1a"
+                },
+                "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                },
+                "fontFamily": {
+                        "headline": ["Work Sans"],
+                        "body": ["Inter"],
+                        "label": ["Work Sans"]
+                }
+              },
+            },
+          }
+    </script>
+</head>
+<body class="bg-surface font-body text-on-surface">
+    <!-- Navbar -->
+    <nav class="fixed top-0 w-full z-50 bg-[#f7f7f0]/80 backdrop-blur-md">
+        <div class="flex justify-between items-center px-8 py-4 max-w-[1920px] mx-auto">
+            <div class="text-2xl font-black tracking-tighter text-[#2d2f2b]">
+                STAVEBNINY
+            </div>
+            <div class="hidden md:flex items-center space-x-12">
+                <a class="text-[#546200] border-b-2 border-[#daf900] pb-1 font-headline uppercase tracking-widest text-xs font-bold transition-all" href="index.html">Domov</a>
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="katalog.html">Materiály</a>
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="pozicovna.html">Požičovňa</a>
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="kontakt.html">Kontakt</a>
+            </div>
+            <div class="flex items-center space-x-6">
+                <div class="flex space-x-4 items-center border-r border-[#e8e9e1] pr-6 mr-2">
+                    <span class="material-symbols-outlined text-[#2d2f2b] cursor-pointer hover:text-[#546200] transition-colors">shopping_cart</span>
+                    <span class="material-symbols-outlined text-[#2d2f2b] cursor-pointer hover:text-[#546200] transition-colors">account_circle</span>
+                </div>
+                <a href="admin.html" class="bg-[#daf900] text-[#505d00] px-5 py-2.5 font-headline uppercase tracking-widest text-xs font-bold active:scale-95 transition-all">
+                    Pro Portál
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="pt-20">
+        <!-- Hero Section -->
+        <section class="relative h-[80vh] flex items-center overflow-hidden">
+            <div class="absolute inset-0 z-0">
+                <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2w7e-Vd4pTgIDmk3NZZyBAEv4DfzDFMY3M2Pzdfh8vvRtE8PR2OrmcHp-FSvjqsm5i9po4CUCQVQK1RRL32ahTBRCgy9iHQVU9qK8S9Teeq9QQXQq-9ZrMCLK9b5FtBI6gnbakU8P9wQhu2MQs2tTXcYkmU6hDI4oWxW-7i6cd37-4jFqvh7hmBdC7xK_tmxml1FsfLGoFpaNQQkQBNwp5W5RJ54WJ8oG5wJSCxRnk6PyUwtcraCcx47fNYLh8FQSaRi_VNwbMCqk"/>
+                <div class="absolute inset-0 bg-black/40"></div>
+            </div>
+            <div class="relative z-10 max-w-[1440px] mx-auto px-8 w-full">
+                <div class="max-w-3xl">
+                    <span class="inline-block font-label text-[0.75rem] font-bold text-primary uppercase tracking-[0.2em] mb-4">Stavebniny Ľubeľa</span>
+                    <h1 class="font-headline text-5xl md:text-7xl font-bold text-white mb-8 leading-tight">
+                        Všetko pre vašu stavbu na jednom mieste
+                    </h1>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="katalog.html" class="bg-primary text-on-primary px-8 py-4 font-label font-bold tracking-wide flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                            Nakupovať materiál
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        </a>
+                        <a href="pozicovna.html" class="tertiary-gradient text-on-tertiary px-8 py-4 font-label font-bold tracking-wide flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                            Požičať techniku
+                            <span class="material-symbols-outlined">construction</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trust Signals -->
+        <section class="bg-surface-container-low py-12">
+            <div class="max-w-[1440px] mx-auto px-8">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-primary/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-on-primary-container">local_shipping</span>
+                        </div>
+                        <div>
+                            <p class="font-headline font-semibold text-sm">Rýchla doprava</p>
+                            <p class="text-xs text-on-surface-variant">Doručíme priamo na stavbu</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-primary/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-on-primary-container">support_agent</span>
+                        </div>
+                        <div>
+                            <p class="font-headline font-semibold text-sm">Odborné poradenstvo</p>
+                            <p class="text-xs text-on-surface-variant">25+ rokov skúseností</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-primary/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-on-primary-container">verified</span>
+                        </div>
+                        <div>
+                            <p class="font-headline font-semibold text-sm">Kvalitné materiály</p>
+                            <p class="text-xs text-on-surface-variant">Certifikovaní dodávatelia</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-primary/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-on-primary-container">calendar_today</span>
+                        </div>
+                        <div>
+                            <p class="font-headline font-semibold text-sm">Požičovňa 24/7</p>
+                            <p class="text-xs text-on-surface-variant">Online rezervácia termínu</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Categories -->
+        <section class="py-24 max-w-[1440px] mx-auto px-8">
+            <div class="mb-16">
+                <span class="font-label text-[0.75rem] font-semibold text-on-primary-container uppercase tracking-[0.2em] border-l-4 border-primary pl-4">Naša Ponuka</span>
+                <h2 class="font-headline text-4xl font-semibold mt-4">Materiály pre váš projekt</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-rows-2 gap-6 h-[700px]">
+                <div class="md:col-span-2 md:row-span-2 bg-surface-container-lowest overflow-hidden group cursor-pointer relative">
+                    <img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnXPvfmfX9p55sT5nDwCeB3hzIbGLRzRt0dpb_qe-ka-t6IuUqrLI-rTplyvCqe5Ot3v-h3WyJJ1dxTjm02K5-9rZNyWf9kbpIAkhxedOtP2LR8qPX1-swgxfPZZhWTmB87l_sTnZ_sLcyhIWzqF7B4f5xe5LHrQxyi_EnlgPqBlaMydiJXiitdAabBmhWiEKqplsuSoTkjCkSZel3SvIitzAEDyYRv4QZBvrgUQIiyWbGQCpf5Swt-vb6btxFe4FDBTR65QXBE779"/>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8">
+                        <h3 class="text-white font-headline text-2xl font-bold">Hrubá stavba</h3>
+                        <p class="text-zinc-200 text-sm mt-2">Tehly, tvárnice, izolácie a ocel.</p>
+                        <div class="w-12 h-1 bg-primary mt-4 transform origin-left transition-transform group-hover:scale-x-150"></div>
+                    </div>
+                </div>
+                <div class="md:col-span-2 bg-surface-container-lowest overflow-hidden group cursor-pointer relative">
+                    <img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmcTqHxnrA8hz8R093ub3Oe6ZJQGea-g7pitoexYfTGHwfaM9c38FNCilr1Xo4cSRdjQF9-MBzerwreo1R4vp4sKlxmO3bQNo_77J425znvQCmPzuj5a2Ktx9id-CIGadTXZOBB7q7GbxxwDgDkFXYBydAVwU0tVBeeLcDDvhzrTGgQkUaS-gZ4gUkoLexHkVPqzQDIzECJavs_514L6FOCl8GrCADy9dNtgAaLaoe_CRCqSyZ2hgP8D3uNys-9wC-iJM8wktAbpa3"/>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-8">
+                        <h3 class="text-white font-headline text-xl font-bold">Suchá výstavba</h3>
+                        <p class="text-zinc-200 text-sm mt-2">Sádrokartón a omietky.</p>
+                    </div>
+                </div>
+                <div class="bg-surface-container-lowest overflow-hidden group cursor-pointer relative">
+                    <img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0FrwZTuoBX4aZ7H9WxgBRiq5ysAFdfL6yE1tuub-3KNCICTwmCcbeVCcoyKoF_KJ0Ps3ehK605v_zn--9hn60jy3sRX0qpF0zJLvC_3XXa-8ZWrhyPMUc8ASuYjzKT8icO6pAeCVm-O7JbK8bGyq_ksXMSH5MiXGmXkfAbrEV6EP6WlP32dmJQ2XF3SMKVjIAlhSWSFGKYiPWqA0EDMzVLU7ZPVNVf9MPtbOEQcgwGqH8DUOVdX2viVbxUZ9pF0IFsCQgAMcRDDBI"/>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6">
+                        <h3 class="text-white font-headline text-lg font-bold">Záhrada</h3>
+                    </div>
+                </div>
+                <div class="bg-surface-container-lowest overflow-hidden group cursor-pointer relative">
+                    <img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGKa0QBuZ3nmbJaX837_20pIhGzhn1cgrRhTktRXspPNKdcRddvBCNkAFOUWfVwiX3vhy1ZDf3hrkD1tWv5ZZoeEV1Jyf65Z0pWn073YOOpI4-2jGeLnYQsYa9UTsL_Aha0QjB0hf-wRmv_OhNaO0G7MijYDmpI573ibe6qakzCkFT9xSLhmCXDJ-GNMMtQVvKGLrasjwlvRC4GAuJPXJRtPfG_fpXC8_6TVOe5R9L5Fc2DPlbL78E84oEXW6nNokvhbp07zTLw2Nk"/>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6">
+                        <h3 class="text-white font-headline text-lg font-bold">Farby a laky</h3>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Newsletter -->
+        <section class="max-w-[1440px] mx-auto px-8 pb-24">
+            <div class="bg-primary p-12 md:p-20 text-center relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-black/5 -mr-32 -mt-32"></div>
+                <h2 class="font-headline text-3xl md:text-5xl font-black text-on-primary mb-6 relative z-10">PRIPRAVENÍ ZAČAŤ STAVAŤ?</h2>
+                <p class="text-on-primary-container text-lg mb-10 max-w-2xl mx-auto relative z-10 font-medium">
+                    Navštívte nás v Ľubeli alebo si vyžiadajte cenovú ponuku online. Sme tu pre vás každý pracovný deň.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
+                    <a href="kontakt.html" class="bg-on-primary text-primary px-8 py-4 font-label font-bold tracking-wide hover:bg-zinc-800 transition-colors">Získať cenovú ponuku</a>
+                    <a href="katalog.html" class="border-2 border-on-primary text-on-primary px-8 py-4 font-label font-bold tracking-wide hover:bg-on-primary hover:text-primary transition-colors">Prejsť do e-shopu</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#2d2f2b] w-full py-12">
+        <div class="max-w-[1440px] mx-auto px-8 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex flex-col md:flex-row gap-8 mb-8 md:mb-0">
+                <a class="text-[#adaea7] font-headline text-[10px] uppercase tracking-widest hover:text-white transition-colors" href="#">Ochrana údajov</a>
+                <a class="text-[#adaea7] font-headline text-[10px] uppercase tracking-widest hover:text-white transition-colors" href="#">Obchodné podmienky</a>
+                <a class="text-[#adaea7] font-headline text-[10px] uppercase tracking-widest hover:text-white transition-colors" href="#">Doprava</a>
+            </div>
+            <div class="text-[#daf900] font-headline text-[10px] uppercase tracking-widest">
+                © 2024 STAVEBNINY ĽUBEĽA. VŠETKY PRÁVA VYHRADENÉ.
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

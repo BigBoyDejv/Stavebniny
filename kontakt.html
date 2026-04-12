@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Kontakt | Stavebniny Ľubeľa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Work+Sans:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" href="style.css">
+    <script id="tailwind-config">
+          tailwind.config = {
+            darkMode: "class",
+            theme: {
+              extend: {
+                "colors": {
+                        "primary": "#DFFF00",
+                        "on-primary": "#2d2f2b",
+                        "surface": "#f7f7f0",
+                        "on-surface": "#2d2f2b",
+                        "surface-container": "#f0eded",
+                        "surface-container-low": "#f6f3f2",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e8e9e1",
+                        "on-surface-variant": "#474842",
+                        "outline": "#777870",
+                        "outline-variant": "#c8c8bc",
+                        "tertiary": "#8b3700",
+                        "error": "#ba1a1a"
+                },
+                "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                },
+                "fontFamily": {
+                        "headline": ["Work Sans"],
+                        "body": ["Inter"],
+                        "label": ["Work Sans"]
+                }
+              },
+            },
+          }
+    </script>
+</head>
+<body class="bg-surface font-body text-on-surface flex flex-col min-h-screen">
+    <!-- Navbar -->
+    <nav class="fixed top-0 w-full z-50 bg-[#f7f7f0]/80 backdrop-blur-md">
+        <div class="flex justify-between items-center px-8 py-4 max-w-[1920px] mx-auto">
+            <div class="text-2xl font-black tracking-tighter text-[#2d2f2b]">
+                STAVEBNINY
+            </div>
+            <div class="hidden md:flex items-center space-x-12">
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="index.html">Domov</a>
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="katalog.html">Materiály</a>
+                <a class="text-[#2d2f2b] font-headline uppercase tracking-widest text-xs font-bold transition-all hover:bg-[#daf900] hover:text-[#505d00] p-1" href="pozicovna.html">Požičovňa</a>
+                <a class="text-[#546200] border-b-2 border-[#daf900] pb-1 font-headline uppercase tracking-widest text-xs font-bold transition-all" href="kontakt.html">Kontakt</a>
+            </div>
+            <div class="flex items-center space-x-6">
+                <div class="flex space-x-4 items-center border-r border-[#e8e9e1] pr-6 mr-2">
+                    <span class="material-symbols-outlined text-[#2d2f2b] cursor-pointer hover:text-[#546200] transition-colors">shopping_cart</span>
+                    <span class="material-symbols-outlined text-[#2d2f2b] cursor-pointer hover:text-[#546200] transition-colors">account_circle</span>
+                </div>
+                <a href="admin.html" class="bg-[#daf900] text-[#505d00] px-5 py-2.5 font-headline uppercase tracking-widest text-xs font-bold active:scale-95 transition-all">
+                    Pro Portál
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow pt-32 pb-24">
+        <section class="max-w-[1440px] mx-auto px-8 mb-16">
+            <div class="flex flex-col gap-2 mb-12">
+                <span class="font-label text-xs uppercase tracking-[0.05em] text-[#546200] font-bold">Kde nás nájdete</span>
+                <h1 class="font-headline text-5xl md:text-6xl font-black tracking-tight text-on-surface">Stavebniny Ľubeľa</h1>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Map Mockup -->
+                <div class="lg:col-span-8 h-[500px] bg-surface-container-low overflow-hidden relative group">
+                    <div class="w-full h-full grayscale-[0.5] hover:grayscale-0 transition-all duration-700" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBg1P9Wci8iVrydUk9grGm1nrHnkBHbv_nOSEhZMkqBJOF2s0xS6nRu3a7KSq1-rMg9TDRPT3HptSmYOk9Oi4cQxxxi46KaMFvoSMMMWA3yLohQGxyu0mArTCUKaAjCNNSqgz9OGLAscG0NbxzkutsceQYTk-TX517XKoa0ARhTdHYP3iem-SLqoTaJN0IsJqkLpFsCSzyofxZYKHWdLZev-3R22n14wO8FqfjrWJFIXBE1VcyMiR5NuGgP1JZ1cYhqVqVzHU7s5n8D'); background-size: cover; background-position: center;">
+                        <div class="absolute inset-0 bg-primary/5"></div>
+                    </div>
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                        <div class="bg-primary text-on-primary p-3 rounded-full shadow-2xl mb-2 animate-bounce">
+                            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">location_on</span>
+                        </div>
+                        <div class="bg-white px-4 py-2 rounded shadow-xl text-sm font-bold text-zinc-900 whitespace-nowrap">
+                            Ľubeľa 544, 032 14
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info -->
+                <div class="lg:col-span-4 flex flex-col gap-6">
+                    <div class="bg-surface-container-low p-8 flex flex-col justify-between flex-grow">
+                        <div>
+                            <span class="material-symbols-outlined text-[#546200] mb-4 block" style="font-variation-settings: 'FILL' 1;">call</span>
+                            <h3 class="font-headline text-xl font-semibold mb-2">Zavolajte nám</h3>
+                            <p class="text-on-surface-variant">Radi vám poradíme s výberom materiálu alebo rezerváciou techniky.</p>
+                        </div>
+                        <a class="text-2xl font-bold text-[#546200] mt-6 hover:opacity-80 transition-opacity" href="tel:+421905123456">+421 905 123 456</a>
+                    </div>
+                    <div class="bg-primary p-8 text-on-primary flex flex-col justify-between">
+                        <div>
+                            <span class="material-symbols-outlined mb-4 block" style="font-variation-settings: 'FILL' 1;">mail</span>
+                            <h3 class="font-headline text-xl font-semibold mb-2">Napíšte nám</h3>
+                            <p class="opacity-90 font-body">Vybavíme vaše dopyty do 24 hodín.</p>
+                        </div>
+                        <a class="text-lg font-semibold underline mt-6" href="mailto:info@stavebninylubela.sk">info@stavebninylubela.sk</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="max-w-[1440px] mx-auto px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <!-- Form -->
+                <div class="md:col-span-2 bg-white p-10 border border-outline-variant">
+                    <h2 class="font-headline text-3xl font-bold mb-8">Napíšte nám správu</h2>
+                    <form class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="flex flex-col gap-2">
+                            <label class="text-xs uppercase tracking-wider text-on-surface-variant font-bold">Meno</label>
+                            <input class="w-full bg-surface-container-low border-none p-4 focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Jozef Mrkva" type="text"/>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="text-xs uppercase tracking-wider text-on-surface-variant font-bold">E-mail</label>
+                            <input class="w-full bg-surface-container-low border-none p-4 focus:ring-2 focus:ring-primary/20 outline-none" placeholder="jozef@gmail.com" type="email"/>
+                        </div>
+                        <div class="md:col-span-2 flex flex-col gap-2">
+                            <label class="text-xs uppercase tracking-wider text-on-surface-variant font-bold">Vaša správa</label>
+                            <textarea class="w-full bg-surface-container-low border-none p-4 focus:ring-2 focus:ring-primary/20 outline-none resize-none" placeholder="Ako vám môžeme pomôcť?" rows="5"></textarea>
+                        </div>
+                        <div class="md:col-span-2">
+                            <button class="bg-[#2d2f2b] text-primary px-8 py-4 font-headline font-bold uppercase tracking-widest text-sm hover:scale-[1.02] transition-all">Odoslať dopyt</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Hours -->
+                <div class="bg-surface-container-low p-8">
+                    <h3 class="font-headline text-2xl font-bold mb-6 flex items-center gap-3">
+                        <span class="material-symbols-outlined text-[#546200]">schedule</span>
+                        Otváracie hodiny
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between pb-2 border-b border-outline-variant/20"><span>Pon - Pia</span> <span class="font-medium">07:00 – 16:30</span></div>
+                        <div class="flex justify-between pb-2 border-b border-outline-variant/20"><span>Sobota</span> <span class="font-medium">07:30 – 12:00</span></div>
+                        <div class="flex justify-between text-error font-bold"><span>Nedeľa</span> <span>Zatvorené</span></div>
+                    </div>
+                    <div class="mt-12 text-sm text-on-surface-variant">
+                        <p class="font-bold text-on-surface mb-2">Fakturačné údaje</p>
+                        <p>Stavebniny Ľubeľa s.r.o.</p>
+                        <p>Ľubeľa 544, 032 14</p>
+                        <p>IČO: 12345678</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#2d2f2b] w-full py-12 mt-auto">
+        <div class="max-w-[1440px] mx-auto px-8 flex flex-col md:flex-row justify-between items-center text-[#adaea7] font-headline text-[10px] uppercase tracking-widest">
+            <div>© 2024 STAVEBNINY ĽUBEĽA. ALL RIGHTS RESERVED.</div>
+            <div class="flex gap-8 mt-4 md:mt-0">
+                <a class="hover:text-white transition-colors" href="#">Privacy</a>
+                <a class="hover:text-white transition-colors" href="#">Terms</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
