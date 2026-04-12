@@ -12,8 +12,11 @@ const Navbar = () => {
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#f7f7f0]/80 backdrop-blur-md">
       <div className="flex justify-between items-center px-8 py-4 max-w-[1920px] mx-auto">
-        <Link to="/" className="text-2xl font-black tracking-tighter text-[#2d2f2b]">
-          STAVEBNINY
+        <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+          <img src="/Logo.png" alt="Logo" className="h-10 w-auto" />
+          <span className="text-xl font-black tracking-tighter text-[#2d2f2b] flex items-center gap-2">
+            STAVEBNINY <span className="text-[#546200] font-bold">ĽUBEĽA</span>
+          </span>
         </Link>
         <div className="hidden md:flex items-center space-x-12">
           {[

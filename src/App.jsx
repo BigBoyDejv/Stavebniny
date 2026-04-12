@@ -7,6 +7,9 @@ import Rental from './pages/Rental'
 import Contact from './pages/Contact'
 import Admin from './pages/Admin'
 import Checkout from './pages/Checkout'
+import GDPR from './pages/GDPR'
+import Terms from './pages/Terms'
+import Shipping from './pages/Shipping'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CartDrawer from './components/CartDrawer'
@@ -26,6 +29,9 @@ function App() {
               <Route path="/kontakt" element={<Contact />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/checkout" element={<Checkout />} />
+              <Route path="/gdpr" element={<GDPR />} />
+              <Route path="/obchodne-podmienky" element={<Terms />} />
+              <Route path="/doprava-a-platba" element={<Shipping />} />
             </Routes>
           </main>
           <Footer />
