@@ -35,7 +35,7 @@ const GDPR = () => {
       <section className="mb-8">
         <h2 className="text-xl font-bold mb-4">5. Vaše práva</h2>
         <p>Máte právo na prístup k svojim údajom, opravu, vymazanie („právo na zabudnutie“) a právo vzniesť námietku proti spracovaniu.</p>
-      </div>
+      </section>
     </div>
   );
 };
