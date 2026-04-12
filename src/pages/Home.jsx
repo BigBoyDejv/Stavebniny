@@ -1,6 +1,5 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowForward, Construction, LocalShipping, SupportAgent, Verified, CalendarToday } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const Home = () => {

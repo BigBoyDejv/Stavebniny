@@ -1,9 +1,11 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ShoppingCart, User } from 'lucide-react'
+import { useCart } from '../context/CartContext'
 
 const Navbar = () => {
   const location = useLocation()
+  const { totalItems, setIsCartOpen } = useCart()
   
   const isActive = (path) => location.pathname === path
   
@@ -35,12 +37,20 @@ const Navbar = () => {
         </div>
         <div className="flex items-center space-x-6">
           <div className="flex space-x-4 items-center border-r border-[#e8e9e1] pr-6 mr-2">
-            <button className="text-[#2d2f2b] hover:text-[#546200] transition-colors">
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className="text-[#2d2f2b] hover:text-[#546200] transition-colors relative"
+            >
               <ShoppingCart size={20} />
+              {totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 bg-primary text-on-primary text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#f7f7f0]">
+                  {totalItems}
+                </span>
+              )}
             </button>
-            <button className="text-[#2d2f2b] hover:text-[#546200] transition-colors">
+            <Link to="/admin" className="text-[#2d2f2b] hover:text-[#546200] transition-colors">
               <User size={20} />
-            </button>
+            </Link>
           </div>
           <Link to="/admin" className="bg-[#daf900] text-[#505d00] px-5 py-2.5 font-headline uppercase tracking-widest text-xs font-bold active:scale-95 transition-all">
             Pro Portál

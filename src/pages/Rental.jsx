@@ -5,6 +5,27 @@ import { supabase } from '../lib/supabase'
 const Rental = () => {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [inquiryData, setInquiryData] = useState({ name: '', phone: '', item: '' })
+  const [sending, setSending] = useState(false)
+
+  const handleInquiry = async (e) => {
+    e.preventDefault()
+    setSending(true)
+    try {
+      const { error } = await supabase.from('inquiries').insert([{
+        name: inquiryData.name,
+        message: `Záujem o prenájom: ${inquiryData.item || 'Všeobecný dopyt'}. Telefón: ${inquiryData.phone}`,
+        email: 'rental@lubela.sk' // Fallback
+      }])
+      if (error) throw error
+      alert('Váš dopyt bol odoslaný. Budeme vás kontaktovať.')
+      setInquiryData({ name: '', phone: '', item: '' })
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setSending(false)
+    }
+  }
 
   useEffect(() => {
     fetchRentals()
@@ -75,7 +96,10 @@ const Rental = () => {
                     <li className="flex items-center gap-2 font-medium tracking-tight"><CheckCircle size={16} className="text-[#546200]" /> Pravidelný servis</li>
                   </ul>
                 </div>
-                <button className="w-full bg-[#daf900] text-[#505d00] py-4 font-bold uppercase tracking-widest text-sm hover:opacity-90 transition-opacity">
+                <button 
+                  onClick={() => { setInquiryData({ ...inquiryData, item: item.name }); window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); }}
+                  className="w-full bg-[#daf900] text-[#505d00] py-4 font-bold uppercase tracking-widest text-sm hover:opacity-90 transition-opacity"
+                >
                   Rezervovať
                 </button>
               </div>
@@ -95,12 +119,12 @@ const Rental = () => {
             </div>
           </div>
           <div className="bg-white p-8 border border-outline-variant">
-            <h3 className="text-2xl font-bold mb-6">Rýchly dopyt</h3>
-            <form className="space-y-4">
-              <input className="w-full bg-surface-container-low border-none p-3 text-sm focus:ring-2 focus:ring-[#daf900]" placeholder="Meno a priezvisko" type="text" />
-              <input className="w-full bg-surface-container-low border-none p-3 text-sm focus:ring-2 focus:ring-[#daf900]" placeholder="Telefón" type="tel" />
-              <button className="w-full bg-[#daf900] text-[#505d00] py-4 font-bold uppercase tracking-widest text-sm hover:opacity-90 transition-opacity mt-4" type="button">
-                Odoslať dopyt
+            <h3 className="text-2xl font-bold mb-6">Rýchly dopyt {inquiryData.item && `- ${inquiryData.item}`}</h3>
+            <form onSubmit={handleInquiry} className="space-y-4">
+              <input required className="w-full bg-surface-container-low border-none p-3 text-sm focus:ring-2 focus:ring-[#daf900]" placeholder="Meno a priezvisko" type="text" value={inquiryData.name} onChange={e => setInquiryData({...inquiryData, name: e.target.value})} />
+              <input required className="w-full bg-surface-container-low border-none p-3 text-sm focus:ring-2 focus:ring-[#daf900]" placeholder="Telefón" type="tel" value={inquiryData.phone} onChange={e => setInquiryData({...inquiryData, phone: e.target.value})} />
+              <button disabled={sending} className="w-full bg-[#daf900] text-[#505d00] py-4 font-bold uppercase tracking-widest text-sm hover:opacity-90 transition-opacity mt-4 disabled:opacity-50">
+                {sending ? 'ODOSIELAM...' : 'Odoslať dopyt'}
               </button>
             </form>
           </div>

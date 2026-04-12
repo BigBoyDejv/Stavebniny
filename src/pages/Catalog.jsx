@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Grid2x2, List, PlusCircle, ShoppingCart, Star } from 'lucide-react'
+import { ChevronRight, Grid2x2, List, PlusCircle, ShoppingCart, Star, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { useCart } from '../context/CartContext'
 
 const Catalog = () => {
+  const { addToCart } = useCart()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -100,7 +102,10 @@ const Catalog = () => {
                         <span className="text-2xl font-black tracking-tight">{product.price.toFixed(2)} €</span>
                         <span className="text-[10px] text-on-surface-variant ml-1">/ ks</span>
                       </div>
-                      <button className="bg-primary text-on-primary w-12 h-12 flex items-center justify-center scale-95 active:scale-90 transition-transform">
+                      <button 
+                        onClick={() => addToCart(product)}
+                        className="bg-primary text-on-primary w-12 h-12 flex items-center justify-center scale-95 active:scale-90 transition-transform hover:bg-[#daf900]"
+                      >
                         <ShoppingCart size={20} />
                       </button>
                     </div>
