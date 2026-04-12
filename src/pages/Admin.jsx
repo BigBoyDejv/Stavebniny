@@ -12,9 +12,18 @@ import { cn } from '../lib/utils'
 const Admin = () => {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [view, setView] = useState('dashboard')
+  const [data, setData] = useState([])
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [stats, setStats] = useState({ products: 0, orders: 0, inquiries: 0, stock: 0 })
   const [categories, setCategories] = useState([])
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [categoryFormData, setCategoryFormData] = useState({ name: '', type: 'material' })
+  const [showModal, setShowModal] = useState(false)
+  const [showOrderDetails, setShowOrderDetails] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [editingItem, setEditingItem] = useState(null)
 
   const [formData, setFormData] = useState({
     name: '',
