@@ -25,6 +25,7 @@ const Catalog = () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
+        .eq('type', 'material')
         .order('created_at', { ascending: false })
       
       if (error) throw error

@@ -13,7 +13,8 @@ const Navbar = () => {
 
   const links = [
     { name: 'Domov', path: '/' },
-    { name: 'Materiály', path: '/katalog' },
+    { name: 'Materiály', path: '/materialy' },
+    { name: 'Nástroje', path: '/nastroje' },
     { name: 'Požičovňa', path: '/pozicovna' },
     { name: 'Kontakt', path: '/kontakt' }
   ]

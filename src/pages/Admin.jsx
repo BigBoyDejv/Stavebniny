@@ -12,17 +12,10 @@ import { cn } from '../lib/utils'
 const Admin = () => {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [view, setView] = useState('dashboard') // dashboard, products, orders, inquiries
-  const [data, setData] = useState([])
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [stats, setStats] = useState({ products: 0, orders: 0, inquiries: 0, stock: 0 })
-  
-  // Form State for Products
-  const [showModal, setShowModal] = useState(false)
-  const [showOrderDetails, setShowOrderDetails] = useState(false)
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [editingItem, setEditingItem] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [categoryFormData, setCategoryFormData] = useState({ name: '', type: 'material' })
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -30,7 +23,8 @@ const Admin = () => {
     sku: '',
     stock_quantity: 0,
     category: '',
-    image_url: ''
+    image_url: '',
+    type: 'material'
   })
 
   useEffect(() => {
@@ -54,22 +48,47 @@ const Admin = () => {
     setStats({ products: p || 0, orders: o || 0, inquiries: i || 0, stock: s?.length || 0 })
   }
 
+  const fetchCategories = async () => {
+    const { data } = await supabase.from('categories').select('*').order('name')
+    setCategories(data || [])
+  }
+
   const fetchData = async () => {
     setLoading(true)
-    let query;
     if (view === 'dashboard') {
-      // Fetch stats summary (just counts for now)
       setLoading(false)
       return
     }
     
-    const table = view === 'products' ? 'products' : view === 'orders' ? 'orders' : 'inquiries'
-    query = supabase.from(table).select('*').order('created_at', { ascending: false })
+    // Updated table logic to include categories
+    const table = view === 'products' ? 'products' : 
+                 view === 'orders' ? 'orders' : 
+                 view === 'categories' ? 'categories' : 'inquiries'
+                 
+    const query = supabase.from(table).select('*').order('created_at', { ascending: false })
     
     const { data, error } = await query
     if (error) console.error(error)
     else setData(data || [])
+    
+    if (view === 'products') fetchCategories()
     setLoading(false)
+  }
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const { error } = await supabase.from('categories').insert([categoryFormData])
+      if (error) throw error
+      setShowCategoryModal(false)
+      if (view === 'categories') fetchData()
+      else fetchCategories()
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSaveProduct = async (e) => {
@@ -140,6 +159,7 @@ const Admin = () => {
         <nav className="flex-1 px-4 space-y-1">
           <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => { setView('dashboard'); setIsSidebarOpen(false); }} />
           <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => { setView('products'); setIsSidebarOpen(false); }} />
+          <NavItem icon={<Filter size={18}/>} label="Kategórie" active={view === 'categories'} onClick={() => { setView('categories'); setIsSidebarOpen(false); }} />
           <NavItem icon={<Truck size={18}/>} label="Objednávky" active={view === 'orders'} onClick={() => { setView('orders'); setIsSidebarOpen(false); }} />
           <NavItem icon={<MessageSquare size={18}/>} label="Zákaznícke dopyty" active={view === 'inquiries'} onClick={() => { setView('inquiries'); setIsSidebarOpen(false); }} />
           <div className="pt-8 pb-4 px-4 text-[10px] font-bold uppercase text-outline tracking-wider">Nastavenia</div>
@@ -292,11 +312,35 @@ const Admin = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-outline">Kategória</label>
-                  <input 
-                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary"
-                    value={formData.category}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
-                  />
+                  <div className="flex gap-2">
+                    <select 
+                      className="flex-1 bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
+                      value={formData.category}
+                      onChange={e => setFormData({...formData, category: e.target.value})}
+                      required
+                    >
+                      <option value="">Vyberte kategóriu</option>
+                      {categories.filter(c => c.type === formData.type).map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                    </select>
+                    <button 
+                      type="button"
+                      onClick={() => setShowCategoryModal(true)}
+                      className="bg-surface px-4 text-primary hover:bg-primary hover:text-on-primary transition-colors"
+                    ><Plus size={18}/></button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Typ produktu</label>
+                  <select 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
+                    value={formData.type}
+                    onChange={e => setFormData({...formData, type: e.target.value, category: ''})}
+                  >
+                    <option value="material">Materiál (Stavba)</option>
+                    <option value="tool">Nástroj (Náradie/Farby)</option>
+                  </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-outline">Cena (€)</label>
@@ -400,6 +444,50 @@ const Admin = () => {
                   <span className="text-primary-container bg-[#2d2f2b] px-4 py-2">{selectedOrder.total_price.toFixed(2)} €</span>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Category Add Modal */}
+        {showCategoryModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md p-10 shadow-2xl relative">
+              <button 
+                type="button"
+                onClick={() => setShowCategoryModal(false)} 
+                className="absolute top-6 right-6 text-outline hover:text-on-surface"
+              ><X size={20}/></button>
+              <h3 className="text-2xl font-black mb-6 uppercase tracking-tight">Nová kategória</h3>
+              <form onSubmit={handleSaveCategory} className="space-y-6">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Názov</label>
+                  <input 
+                    className="w-full bg-surface p-4 outline-none border-b-2 border-transparent focus:border-primary text-sm font-bold"
+                    value={categoryFormData.name}
+                    onChange={e => setCategoryFormData({...categoryFormData, name: e.target.value})}
+                    required
+                    placeholder="Napr. Farby a laky"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Typ kategórie</label>
+                  <select 
+                    className="w-full bg-surface p-4 outline-none text-sm font-bold"
+                    value={categoryFormData.type}
+                    onChange={e => setCategoryFormData({...categoryFormData, type: e.target.value})}
+                  >
+                    <option value="material">Materiály (V sekcii Materiály)</option>
+                    <option value="tool">Nástroje / Farby (V sekcii Nástroje)</option>
+                    <option value="rental">Požičovňa (V sekcii Požičovňa)</option>
+                  </select>
+                </div>
+                <button 
+                  disabled={loading}
+                  className="w-full bg-primary text-on-primary py-4 font-black uppercase tracking-widest hover:bg-[#daf900] disabled:opacity-50 transition-all shadow-lg shadow-primary/20"
+                >
+                  {loading ? 'VYTVÁRAM...' : 'VYTVORIŤ KATEGÓRIU'}
+                </button>
+              </form>
             </div>
           </div>
         )}

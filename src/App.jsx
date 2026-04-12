@@ -7,6 +7,7 @@ import Rental from './pages/Rental'
 import Contact from './pages/Contact'
 import Admin from './pages/Admin'
 import Checkout from './pages/Checkout'
+import Tools from './pages/Tools'
 import GDPR from './pages/GDPR'
 import Terms from './pages/Terms'
 import Shipping from './pages/Shipping'
@@ -26,7 +27,8 @@ function App() {
           <main className="flex-grow">
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/katalog" element={<Catalog />} />
+              <Route path="/materialy" element={<Catalog />} />
+              <Route path="/nastroje" element={<Tools />} />
               <Route path="/pozicovna" element={<Rental />} />
               <Route path="/kontakt" element={<Contact />} />
               <Route path="/admin" element={<Admin />} />
