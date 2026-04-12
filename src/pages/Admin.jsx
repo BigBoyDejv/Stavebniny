@@ -14,6 +14,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState('dashboard') // dashboard, products, orders, inquiries
   const [data, setData] = useState([])
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [stats, setStats] = useState({ products: 0, orders: 0, inquiries: 0, stock: 0 })
   
@@ -116,21 +117,33 @@ const Admin = () => {
   if (!session) return <LoginComponent setSession={setSession} />
 
   return (
-    <div className="flex pt-20 min-h-screen bg-[#f7f7f0]">
+    <div className="flex flex-col md:flex-row pt-20 min-h-screen bg-[#f7f7f0]">
+      {/* Mobile Sidebar Toggle */}
+      <div className="md:hidden flex justify-between items-center p-4 bg-white border-b border-outline/10">
+        <span className="font-black tracking-tighter uppercase text-xs">Stavebniny PRO</span>
+        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-surface">
+          {isSidebarOpen ? <X size={20}/> : <Menu size={20}/>}
+        </button>
+      </div>
+
       {/* Sidebar navigation */}
-      <aside className="w-64 bg-white border-r border-outline/10 fixed h-screen overflow-y-auto">
-        <div className="p-8">
+      <aside className={cn(
+        "bg-white border-r border-outline/10 h-screen overflow-y-auto transition-all duration-300 z-40 shrink-0",
+        "fixed md:sticky top-0 left-0 pt-20 md:pt-0",
+        isSidebarOpen ? "w-64 opacity-100 visible" : "w-0 opacity-0 invisible md:w-64 md:opacity-100 md:visible"
+      )}>
+        <div className="p-8 hidden md:block">
           <span className="text-xl font-black tracking-tighter">STAVEBNINY PRO</span>
           <p className="text-[10px] uppercase tracking-widest text-[#546200] font-bold mt-1">Admin v2.0</p>
         </div>
         
         <nav className="flex-1 px-4 space-y-1">
-          <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => setView('products')} />
-          <NavItem icon={<Truck size={18}/>} label="Objednávky" active={view === 'orders'} onClick={() => setView('orders')} />
-          <NavItem icon={<MessageSquare size={18}/>} label="Zákaznícke dopyty" active={view === 'inquiries'} onClick={() => setView('inquiries')} />
+          <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => { setView('dashboard'); setIsSidebarOpen(false); }} />
+          <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => { setView('products'); setIsSidebarOpen(false); }} />
+          <NavItem icon={<Truck size={18}/>} label="Objednávky" active={view === 'orders'} onClick={() => { setView('orders'); setIsSidebarOpen(false); }} />
+          <NavItem icon={<MessageSquare size={18}/>} label="Zákaznícke dopyty" active={view === 'inquiries'} onClick={() => { setView('inquiries'); setIsSidebarOpen(false); }} />
           <div className="pt-8 pb-4 px-4 text-[10px] font-bold uppercase text-outline tracking-wider">Nastavenia</div>
-          <NavItem icon={<Settings size={18}/>} label="Systém" active={view === 'settings'} onClick={() => setView('settings')} />
+          <NavItem icon={<Settings size={18}/>} label="Systém" active={view === 'settings'} onClick={() => { setView('settings'); setIsSidebarOpen(false); }} />
         </nav>
 
         <div className="p-8 mt-auto border-t border-outline/10">
@@ -141,7 +154,7 @@ const Admin = () => {
       </aside>
 
       {/* Main Area */}
-      <main className="flex-1 ml-64 p-12">
+      <main className="flex-1 p-4 md:p-12 overflow-x-hidden">
         <header className="flex justify-between items-end mb-12">
           <div>
             <h1 className="text-4xl font-black tracking-tight capitalize">

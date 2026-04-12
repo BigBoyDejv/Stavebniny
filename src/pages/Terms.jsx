@@ -7,7 +7,7 @@ const Terms = () => {
       
       <section className="mb-8">
         <h2 className="text-xl font-bold mb-4">1. Úvodné ustanovenia</h2>
-        <p>Tieto obchodné podmienky platia pre nákup v internetovom obchode Stavebniny Ľubeľa. Podmienky bližšie vymedzujú a upresňujú práva a povinnosti predávajúceho a kupujúceho.</p>
+        <p>Tieto obchodné podmienky platia pre nákup v internetovom obchode spoločnosti <strong>Staviválubela s.r.o.</strong> (Stavebniny Ľubeľa). Podmienky bližšie vymedzujú a upresňujú práva a povinnosti predávajúceho a kupujúceho.</p>
       </section>
 
       <section className="mb-8">

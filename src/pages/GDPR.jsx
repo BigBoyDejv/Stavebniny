@@ -7,7 +7,7 @@ const GDPR = () => {
       
       <section className="mb-8">
         <h2 className="text-xl font-bold mb-4">1. Základné ustanovenia</h2>
-        <p>Prevádzkovateľom osobných údajov podľa článku 4 bod 7 nariadenia Európskeho parlamentu a Rady (EÚ) 2016/679 o ochrane fyzických osôb pri spracúvaní osobných údajov a o voľnom pohybe takýchto údajov (ďalej len: „GDPR“) sú Stavebniny Ľubeľa (ďalej len „prevádzkovateľ“).</p>
+        <p>Prevádzkovateľom osobných údajov podľa článku 4 bod 7 nariadenia Európskeho parlamentu a Rady (EÚ) 2016/679 o ochrane fyzických osôb pri spracúvaní osobných údajov a o voľnom pohybe takýchto údajov (ďalej len: „GDPR“) je spoločnosť <strong>Staviválubela s.r.o.</strong>, so sídlom Ľubeľa 419, 032 14 Ľubeľa, IČO: 52 079 716 (ďalej len „prevádzkovateľ“).</p>
       </section>
 
       <section className="mb-8">
