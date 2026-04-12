@@ -5,10 +5,10 @@ import {
   LogOut, LayoutDashboard, Settings, Search, Filter, 
   ChevronRight, AlertCircle, CheckCircle2, X
 } from 'lucide-react'
-import { clsx, type ClassValue } from 'clsx'
+import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
-function cn(...inputs: ClassValue[]) {
+function cn(...inputs) {
   return twMerge(clsx(inputs))
 }
 
