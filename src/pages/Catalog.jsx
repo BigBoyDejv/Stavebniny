@@ -160,63 +160,68 @@ const Catalog = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-              {filteredProducts.map((product) => (
-                <div key={product.id} className="group flex flex-col bg-white border border-outline/5 hover:border-primary/30 transition-all hover:shadow-xl relative">
-                   <div className="relative aspect-square overflow-hidden bg-surface-container-low">
-                    <img 
-                      alt={product.name} 
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                      src={product.image_url || 'https://via.placeholder.com/400'} 
-                    />
-                    {product.name.toLowerCase().includes('akcia') && (
-                      <div className="absolute top-4 left-4 bg-tertiary text-white font-bold text-[10px] px-3 py-1 tracking-widest uppercase">AKCIA</div>
-                    )}
-                  </div>
-                  <div className="p-8 flex flex-col flex-1">
-                    <div className="flex justify-between items-start mb-2">
-                       <span className="font-bold text-[10px] text-primary-strong tracking-widest uppercase">{product.category || 'MATERIÁL'}</span>
-                       {product.stock_quantity > 0 ? (
-                         <span className="text-[10px] text-emerald-600 font-bold uppercase flex items-center gap-1">
-                           <CheckCircle2 size={12} /> Skladom
-                         </span>
-                       ) : (
-                         <span className="text-[10px] text-zinc-400 font-bold uppercase">Na objednávku</span>
-                       )}
-                    </div>
-                    <h3 className="text-xl font-bold mb-3 leading-tight group-hover:text-primary transition-colors">{product.name}</h3>
-                    <p className="text-sm text-on-surface-variant flex-1 line-clamp-2 mb-8 leading-relaxed italic">{product.description}</p>
-                    
-                    <div className="flex items-center justify-between mt-auto pt-6 border-t border-outline/5">
-                      <div className="flex flex-col">
-                        <span className="text-sm text-on-surface-variant line-through opacity-40 font-bold">
-                           {product.name.toLowerCase().includes('akcia') ? (product.price * 1.2).toFixed(2) + ' €' : ''}
-                        </span>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black tracking-tight text-[#2d2f2b]">{product.price.toFixed(2)} €</span>
-                          <span className="text-xs text-on-surface-variant/60 font-bold">/ ks</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {sortedProducts.map((product) => {
+                const priceStr = product.price.toFixed(2).split('.')
+                return (
+                  <div 
+                    key={product.id} 
+                    className="group bg-white border border-outline/10 hover:border-primary/40 transition-all duration-300 flex flex-col cursor-pointer"
+                    onClick={() => { setSelectedProduct(product); setModalQty(1); setShowDetailModal(true); }}
+                  >
+                    {/* Image container */}
+                    <div className="relative aspect-square overflow-hidden p-6 bg-[#fcfcfc]">
+                      <img 
+                        src={product.image_url || 'https://via.placeholder.com/400'} 
+                        alt={product.name}
+                        className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                      />
+                      {product.stock_quantity <= 0 && (
+                        <div className="absolute top-4 left-4 bg-error text-white text-[8px] font-black uppercase px-2 py-1">Vypredané</div>
+                      )}
+                      {product.category && (
+                        <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm text-on-surface text-[8px] font-bold uppercase px-2 py-1 border border-outline/10">
+                          {product.category}
                         </div>
+                      )}
+                    </div>
+
+                    {/* Info container */}
+                    <div className="p-6 flex flex-col flex-grow bg-white">
+                      <h3 className="text-sm font-medium text-on-surface leading-snug mb-2 line-clamp-2 h-10 group-hover:text-primary transition-colors">
+                        {product.name}
+                      </h3>
+                      
+                      {/* Rating placeholder */}
+                      <div className="flex gap-0.5 mb-8">
+                        {[1,2,3,4,5].map(star => (
+                          <Star key={star} size={14} className={cn("fill-current", star <= 4 ? "text-orange-500" : "text-gray-200")} />
+                        ))}
                       </div>
-                      <div className="flex gap-2">
+
+                      <div className="mt-auto flex justify-between items-end">
+                        <div className="flex flex-col">
+                           <div className="flex items-start">
+                              <span className="text-3xl font-black tracking-tighter leading-none">{priceStr[0]}</span>
+                              <div className="flex flex-col ml-1">
+                                 <span className="text-base font-black leading-none">{priceStr[1]}</span>
+                                 <span className="text-lg font-black leading-none">€*</span>
+                                 <p className="text-[10px] text-outline mt-1 font-medium">{product.price.toFixed(2)} € / ks</p>
+                              </div>
+                           </div>
+                        </div>
+                        
                         <button 
-                          onClick={() => setSelectedProduct(product)}
-                          className="bg-surface-container-high text-on-surface p-4 hover:bg-surface-container-highest transition-all"
-                          title="Viac info"
+                           onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+                           className="p-3 bg-surface hover:bg-primary hover:text-on-primary transition-all active:scale-95"
                         >
-                          <Eye size={22} />
-                        </button>
-                        <button 
-                          onClick={() => addToCart(product)}
-                          className="bg-primary text-on-primary p-4 hover:scale-[1.05] active:scale-95 transition-all shadow-lg shadow-primary/20 hover:bg-[#daf900]"
-                          title="Pridať do košíka"
-                        >
-                          <ShoppingCart size={22} strokeWidth={2.5} />
+                           <ShoppingCart size={18} />
                         </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
