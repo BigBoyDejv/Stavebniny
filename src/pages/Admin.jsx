@@ -391,6 +391,17 @@ const Admin = () => {
                   />
                 </div>
                 <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Typ produktu</label>
+                  <select 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
+                    value={formData.type}
+                    onChange={e => setFormData({...formData, type: e.target.value, category: ''})}
+                  >
+                    <option value="material">Materiál (Stavba)</option>
+                    <option value="tool">Nástroj (Náradie/Farby)</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-outline">Kategória</label>
                   <div className="flex gap-2">
                     <select 
@@ -408,19 +419,9 @@ const Admin = () => {
                       type="button"
                       onClick={() => setShowCategoryModal(true)}
                       className="bg-surface px-4 text-primary hover:bg-primary hover:text-on-primary transition-colors"
+                      title="Pridať novú kategóriu"
                     ><Plus size={18}/></button>
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-outline">Typ produktu</label>
-                  <select 
-                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
-                    value={formData.type}
-                    onChange={e => setFormData({...formData, type: e.target.value, category: ''})}
-                  >
-                    <option value="material">Materiál (Stavba)</option>
-                    <option value="tool">Nástroj (Náradie/Farby)</option>
-                  </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-outline">Cena (€)</label>
