@@ -18,17 +18,17 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('stavebniny_cart', JSON.stringify(cart));
   }, [cart]);
 
-  const addToCart = (product) => {
+  const addToCart = (product, qty = 1) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === product.id ? { ...item, quantity: item.quantity + qty } : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity: qty }];
     });
-    toast.success(`${product.name} pridané do košíka`, {
+    toast.success(`${product.name} (${qty}ks) pridané do košíka`, {
       style: {
         background: '#2d2f2b',
         color: '#DFFF00',

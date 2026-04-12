@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Grid2x2, List, PlusCircle, ShoppingCart, Star, Loader2, Search, CheckCircle2, Eye, X } from 'lucide-react'
+import { ChevronRight, Grid2x2, List, PlusCircle, ShoppingCart, Star, Loader2, Search, CheckCircle2, Eye, X, Plus, Minus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
 import { cn } from '../lib/utils'
@@ -13,6 +13,8 @@ const Catalog = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [sortBy, setSortBy] = useState('newest') // newest, price-asc, price-desc, name-asc
+  const [modalQty, setModalQty] = useState(1)
 
   useEffect(() => {
     fetchProducts()
@@ -41,6 +43,13 @@ const Catalog = () => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
+  })
+
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    if (sortBy === 'price-asc') return a.price - b.price
+    if (sortBy === 'price-desc') return b.price - a.price
+    if (sortBy === 'name-asc') return a.name.localeCompare(b.name)
+    return new Date(b.created_at) - new Date(a.created_at) // newest
   })
 
   return (
@@ -115,6 +124,20 @@ const Catalog = () => {
             <div>
               <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 uppercase">{selectedCategory}</h1>
               <p className="text-on-surface-variant text-xs md:text-sm font-medium">Nájdených {filteredProducts.length} produktov</p>
+            </div>
+            
+            <div className="flex items-center gap-4 w-full sm:w-auto">
+               <span className="text-[10px] font-black uppercase text-outline hidden sm:block">Zoradiť podľa:</span>
+               <select 
+                 value={sortBy}
+                 onChange={(e) => setSortBy(e.target.value)}
+                 className="flex-1 sm:flex-none bg-white border border-outline/10 p-3 text-xs font-bold uppercase tracking-widest focus:ring-1 focus:ring-primary outline-none"
+               >
+                 <option value="newest">Najnovšie</option>
+                 <option value="price-asc">Cena (Od najlacnejšieho)</option>
+                 <option value="price-desc">Cena (Od najdrahšieho)</option>
+                 <option value="name-asc">Názov (A-Z)</option>
+               </select>
             </div>
           </div>
 
@@ -253,13 +276,34 @@ const Catalog = () => {
                 </div>
               </div>
 
-              <div className="mt-12 space-y-4">
+              <div className="mt-12 space-y-6">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center border-2 border-outline/10 bg-surface">
+                    <button 
+                      onClick={() => setModalQty(Math.max(1, modalQty - 1))}
+                      className="p-4 hover:bg-primary/20 transition-colors"
+                    ><Minus size={20}/></button>
+                    <span className="w-12 text-center font-black text-lg">{modalQty}</span>
+                    <button 
+                      onClick={() => setModalQty(modalQty + 1)}
+                      className="p-4 hover:bg-primary/20 transition-colors"
+                    ><Plus size={20}/></button>
+                  </div>
+                  <div className="text-[10px] font-bold uppercase text-outline tracking-wider leading-tight">
+                    Presné množstvo<br/>pre váš projekt
+                  </div>
+                </div>
+
                 <button 
-                  onClick={() => { addToCart(selectedProduct); setSelectedProduct(null); }}
-                  className="w-full bg-[#2d2f2b] text-primary py-6 font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-3"
+                  onClick={() => { 
+                    addToCart(selectedProduct, modalQty); 
+                    setSelectedProduct(null); 
+                    setModalQty(1);
+                  }}
+                  className="w-full bg-[#2d2f2b] text-primary py-6 font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
                 >
-                  <ShoppingCart size={24} />
-                  PRIDAŤ DO KOŠÍKA
+                  <ShoppingCart size={22} />
+                  PRIDAŤ DO KOŠÍKA — {(selectedProduct.price * modalQty).toFixed(2)} €
                 </button>
                 <p className="text-[10px] text-center text-on-surface-variant font-bold uppercase tracking-widest pt-2">
                   Záruka kvality STAVEBNINY ĽUBEĽA
