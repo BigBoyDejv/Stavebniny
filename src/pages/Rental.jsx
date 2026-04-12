@@ -6,6 +6,7 @@ import { cn } from '../lib/utils'
 const Rental = () => {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [categories, setCategories] = useState(['Všetko'])
   const [selectedCategory, setSelectedCategory] = useState('Všetko')
   const [searchQuery, setSearchQuery] = useState('')
   const [inquiryData, setInquiryData] = useState({ 
@@ -36,7 +37,17 @@ const Rental = () => {
 
   useEffect(() => {
     fetchRentals()
+    fetchCategories()
   }, [])
+
+  const fetchCategories = async () => {
+    const { data } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('type', 'rental')
+      .order('name')
+    if (data) setCategories(['Všetko', ...data.map(c => c.name)])
+  }
 
   const fetchRentals = async () => {
     try {
@@ -54,7 +65,6 @@ const Rental = () => {
     }
   }
 
-  const categories = ['Všetko', ...new Set(items.map(i => i.category || 'Iné'))]
 
   const filteredItems = items.filter(item => {
     const matchesCategory = selectedCategory === 'Všetko' || (item.category || 'Iné') === selectedCategory

@@ -9,13 +9,24 @@ const Tools = () => {
   const { addToCart } = useCart()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [categories, setCategories] = useState(['Všetko'])
   const [selectedCategory, setSelectedCategory] = useState('Všetko')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('newest')
 
   useEffect(() => {
     fetchTools()
+    fetchCategories()
   }, [])
+
+  const fetchCategories = async () => {
+    const { data } = await supabase
+      .from('categories')
+      .select('name')
+      .eq('type', 'tool')
+      .order('name')
+    if (data) setCategories(['Všetko', ...data.map(c => c.name)])
+  }
 
   const fetchTools = async () => {
     try {
@@ -34,7 +45,6 @@ const Tools = () => {
     }
   }
 
-  const categories = ['Všetko', ...new Set(products.map(p => p.category).filter(Boolean))]
 
   const filteredProducts = products.filter(product => {
     const matchesCategory = selectedCategory === 'Všetko' || product.category === selectedCategory;
