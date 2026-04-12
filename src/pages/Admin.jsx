@@ -88,11 +88,15 @@ const Admin = () => {
     e.preventDefault()
     setLoading(true)
     try {
-      const { error } = await supabase.from('categories').insert([categoryFormData])
+      const { data, error } = await supabase.from('categories').insert([categoryFormData]).select().single()
       if (error) throw error
+      
+      // Auto-select the new category in the form if we are creating one
+      setFormData(prev => ({ ...prev, category: data.name }))
+      
       setShowCategoryModal(false)
+      await fetchCategories()
       if (view === 'categories') fetchData()
-      else fetchCategories()
     } catch (err) {
       alert(err.message)
     } finally {
