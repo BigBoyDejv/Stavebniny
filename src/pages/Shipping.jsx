@@ -9,7 +9,7 @@ const Shipping = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         <section>
           <div className="flex items-center gap-3 mb-6">
-            <Truck className="text-primary w-8 h-8" />
+            <Truck className="text-primary-strong w-8 h-8" />
             <h2 className="text-2xl font-bold">Možnosti dopravy</h2>
           </div>
           <ul className="space-y-6">
@@ -33,7 +33,7 @@ const Shipping = () => {
 
         <section>
           <div className="flex items-center gap-3 mb-6">
-            <CreditCard className="text-primary w-8 h-8" />
+            <CreditCard className="text-primary-strong w-8 h-8" />
             <h2 className="text-2xl font-bold">Spôsoby platby</h2>
           </div>
           <ul className="space-y-6">
@@ -53,11 +53,11 @@ const Shipping = () => {
         </section>
       </div>
 
-      <div className="mt-16 bg-[#2d2f2b] text-white p-10 flex flex-col md:flex-row items-center gap-8">
-         <MapPin className="w-12 h-12 text-primary shrink-0" />
+      <div className="mt-16 bg-[#2d2f2b] text-white p-10 flex flex-col md:flex-row items-center gap-8 shadow-2xl">
+         <MapPin className="w-12 h-12 text-primary shrink-0 transition-transform hover:scale-110 duration-300" />
          <div>
-            <h3 className="text-xl font-bold mb-2 uppercase">Kde nás nájdete?</h3>
-            <p className="text-zinc-400">Hlavná ulica 123, 032 14 Ľubeľa. Sme otvorení Po-Pi 7:00-16:00, So 7:00-12:00.</p>
+            <h3 className="text-xl font-bold mb-2 uppercase tracking-tight text-primary">Kde nás nájdete?</h3>
+            <p className="text-zinc-300">Hlavná ulica 123, 032 14 Ľubeľa. Sme otvorení Po-Pi 7:00-16:00, So 7:00-12:00.</p>
          </div>
       </div>
     </div>

@@ -12,7 +12,7 @@ const CartDrawer = () => {
     <div className="fixed inset-0 z-[100] overflow-hidden">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />
       
-      <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="absolute right-0 top-0 h-full w-full sm:max-w-md bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
         <header className="p-6 border-b border-outline/10 flex justify-between items-center">
           <h2 className="text-xl font-black tracking-tight flex items-center gap-2">
             <ShoppingBag size={20} /> NÁKUPNÝ KOŠÍK

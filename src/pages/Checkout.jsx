@@ -87,8 +87,8 @@ const Checkout = () => {
   }
 
   return (
-    <div className="pt-32 pb-20 px-8 max-w-[1440px] mx-auto">
-      <h1 className="text-4xl font-black tracking-tight mb-12">DOKONČENIE OBJEDNÁVKY</h1>
+    <div className="pt-24 md:pt-32 pb-20 px-4 md:px-8 max-w-[1440px] mx-auto">
+      <h1 className="text-2xl md:text-4xl font-black tracking-tight mb-8 md:12">DOKONČENIE OBJEDNÁVKY</h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
         {/* Form */}
