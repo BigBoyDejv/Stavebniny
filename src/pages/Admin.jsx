@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { 
   Plus, Edit, Trash2, Package, Truck, MessageSquare, 
   LogOut, LayoutDashboard, Settings, Search, Filter, 
-  ChevronRight, AlertCircle, CheckCircle2, X, Eye, Menu
+  ChevronRight, AlertCircle, CheckCircle2, X, Eye, Menu, PlusCircle
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -142,6 +142,44 @@ const Admin = () => {
     fetchData()
   }
 
+  const handleImportFromUrl = async (url) => {
+    setLoading(true)
+    try {
+      // Use a CORS proxy to fetch the page content
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+      const response = await fetch(proxyUrl)
+      const data = await response.json()
+      
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(data.contents, 'text/html')
+      
+      // Extract data using Meta tags (most common)
+      const title = doc.querySelector('meta[property="og:title"]')?.content || doc.title
+      const description = doc.querySelector('meta[property="og:description"]')?.content || ''
+      const image = doc.querySelector('meta[property="og:image"]')?.content || ''
+      
+      // Site specific extraction (Example for common patterns)
+      let price = 0
+      const priceText = doc.body.innerText.match(/(\d+[,.]\d+)\s*€/)
+      if (priceText) price = parseFloat(priceText[1].replace(',', '.'))
+
+      setFormData({
+        ...formData,
+        name: title.split('|')[0].trim(),
+        description: description,
+        image_url: image,
+        price: price,
+        category: view === 'products' ? formData.category : ''
+      })
+      
+      setShowModal(true)
+    } catch (err) {
+      alert('Nepodarilo sa načítať dáta automaticky. Skúste manuálne zadanie alebo iný link.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (!session) return <LoginComponent setSession={setSession} />
 
   return (
@@ -191,11 +229,31 @@ const Admin = () => {
             </h1>
           </div>
           {view === 'products' && (
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  const url = prompt('Vložte URL produktu (napr. z OBI):')
+                  if (url) handleImportFromUrl(url)
+                }}
+                className="bg-white border border-outline/20 text-on-surface px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-surface transition-colors"
+                disabled={loading}
+              >
+                <PlusCircle size={16} /> {loading ? 'Spracúvam...' : 'Import z URL'}
+              </button>
+              <button 
+                onClick={() => { setEditingItem(null); setFormData({name:'', description:'', price:0, sku:'', stock_quantity:0, category:'', image_url:'', type: 'material'}); setShowModal(true); }}
+                className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
+              >
+                <Plus size={16} /> Pridať produkt
+              </button>
+            </div>
+          )}
+          {view === 'categories' && (
             <button 
-              onClick={() => { setEditingItem(null); setFormData({name:'', description:'', price:0, sku:'', stock_quantity:0, category:'', image_url:''}); setShowModal(true); }}
+              onClick={() => setShowCategoryModal(true)}
               className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
             >
-              <Plus size={16} /> Pridať produkt
+              <Plus size={16} /> Nová kategória
             </button>
           )}
         </header>
