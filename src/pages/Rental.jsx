@@ -20,8 +20,8 @@ const Rental = () => {
     try {
       const { error } = await supabase.from('inquiries').insert([{
         name: inquiryData.name,
-        message: `ZÁUJEM O PRENÁJOM: ${inquiryData.item}\nTERMÍN: ${inquiryData.startDate} až ${inquiryData.endDate}\nTELEFÓN: ${inquiryData.phone}`,
-        email: 'rental@lubela.sk'
+        email: inquiryData.email,
+        message: `ZÁUJEM O PRENÁJOM: ${inquiryData.item}\nTERMÍN: ${inquiryData.startDate} až ${inquiryData.endDate}\nTELEFÓN: ${inquiryData.phone}\nPOZNÁMKA: ${inquiryData.message || 'Žiadna'}`,
       }])
       if (error) throw error
       setSelectedForBooking(null)
@@ -156,8 +156,12 @@ const Rental = () => {
                     </div>
                     
                     <button 
-                      onClick={() => { setSelectedForBooking(item); setInquiryData({ ...inquiryData, item: item.name }); }}
-                      className="mt-auto w-full border-2 border-on-surface p-4 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-on-surface hover:text-white transition-all active:scale-[0.98]"
+                      onClick={() => { 
+                        console.log('Booking item:', item.name);
+                        setSelectedForBooking(item); 
+                        setInquiryData({ ...inquiryData, item: item.name }); 
+                      }}
+                      className="mt-auto w-full border-2 border-on-surface p-4 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-on-surface hover:text-white transition-all active:scale-[0.98] cursor-pointer"
                     >
                       Rezervovať techniku
                     </button>
@@ -170,7 +174,7 @@ const Rental = () => {
 
       {/* Booking Modal */}
       {selectedForBooking && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-on-surface/40 backdrop-blur-md">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-on-surface/60 backdrop-blur-md">
            <div className="bg-white w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 relative shadow-2xl">
               <button 
                 onClick={() => setSelectedForBooking(null)}
@@ -188,51 +192,78 @@ const Rental = () => {
 
               <div className="p-8 md:p-12">
                  <h3 className="text-xl font-black uppercase tracking-widest mb-8 border-b-4 border-primary inline-block">Rezervačný formulár</h3>
-                 <form onSubmit={handleInquiry} className="space-y-6">
+                 <form onSubmit={handleInquiry} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                         <label className="text-[10px] font-black uppercase text-outline">Vaše meno</label>
+                         <input 
+                          required 
+                          className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold" 
+                          placeholder="JOZEF MRKVIČKA" 
+                          value={inquiryData.name} 
+                          onChange={e => setInquiryData({...inquiryData, name: e.target.value.toUpperCase()})}
+                         />
+                      </div>
+                      <div className="space-y-1">
+                         <label className="text-[10px] font-black uppercase text-outline">E-mail</label>
+                         <input 
+                          required type="email"
+                          className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold" 
+                          placeholder="EMAIL@PRIKLAD.SK" 
+                          value={inquiryData.email || ''} 
+                          onChange={e => setInquiryData({...inquiryData, email: e.target.value})}
+                         />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                         <label className="text-[10px] font-black uppercase text-outline">Telefón</label>
+                         <input 
+                          required 
+                          className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold" 
+                          placeholder="+421 ..." 
+                          type="tel"
+                          value={inquiryData.phone} 
+                          onChange={e => setInquiryData({...inquiryData, phone: e.target.value})}
+                         />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-outline">Od dátumu</label>
+                            <input 
+                              required type="date"
+                              className="w-full bg-surface p-2 text-xs font-bold border-none focus:ring-1 focus:ring-primary" 
+                              value={inquiryData.startDate} 
+                              onChange={e => setInquiryData({...inquiryData, startDate: e.target.value})}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase text-outline">Do dátumu</label>
+                            <input 
+                              required type="date"
+                              className="w-full bg-surface p-2 text-xs font-bold border-none focus:ring-1 focus:ring-primary" 
+                              value={inquiryData.endDate} 
+                              onChange={e => setInquiryData({...inquiryData, endDate: e.target.value})}
+                            />
+                          </div>
+                      </div>
+                    </div>
+
                     <div className="space-y-1">
-                       <label className="text-[10px] font-black uppercase text-outline">Vaše meno</label>
-                       <input 
-                        required 
-                        className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold" 
-                        placeholder="JOZEF MRKVIČKA" 
-                        value={inquiryData.name} 
-                        onChange={e => setInquiryData({...inquiryData, name: e.target.value.toUpperCase()})}
+                       <label className="text-[10px] font-black uppercase text-outline">Poznámka / Špecifikácia</label>
+                       <textarea 
+                        className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-xs font-medium min-h-[80px]" 
+                        placeholder="Miesto dodania, špeciálne požiadavky..." 
+                        value={inquiryData.message || ''} 
+                        onChange={e => setInquiryData({...inquiryData, message: e.target.value})}
                        />
                     </div>
-                    <div className="space-y-1">
-                       <label className="text-[10px] font-black uppercase text-outline">Telefón</label>
-                       <input 
-                        required 
-                        className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold" 
-                        placeholder="+421 ..." 
-                        type="tel"
-                        value={inquiryData.phone} 
-                        onChange={e => setInquiryData({...inquiryData, phone: e.target.value})}
-                       />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black uppercase text-outline">Od dátumu</label>
-                          <input 
-                            required type="date"
-                            className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold" 
-                            value={inquiryData.startDate} 
-                            onChange={e => setInquiryData({...inquiryData, startDate: e.target.value})}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black uppercase text-outline">Do dátumu</label>
-                          <input 
-                            required type="date"
-                            className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold" 
-                            value={inquiryData.endDate} 
-                            onChange={e => setInquiryData({...inquiryData, endDate: e.target.value})}
-                          />
-                        </div>
-                    </div>
+
                     <button 
+                      type="submit"
                       disabled={sending}
-                      className="w-full bg-primary text-on-primary py-6 font-black uppercase tracking-[0.2em] hover:bg-[#daf900] transition-all disabled:opacity-50 shadow-xl"
+                      className="w-full bg-primary text-on-primary py-5 font-black uppercase tracking-[0.2em] hover:bg-[#daf900] transition-all disabled:opacity-50 shadow-xl active:scale-[0.98]"
                     >
                       {sending ? 'ODOSIELAM...' : 'POTVRDIŤ ZÁUJEM O PRENÁJOM'}
                     </button>
