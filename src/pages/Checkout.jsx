@@ -64,9 +64,9 @@ const Checkout = () => {
         <div className="bg-emerald-100 text-emerald-600 p-6 rounded-full mb-8">
            <CheckCircle size={64} />
         </div>
-        <h1 className="text-4xl font-black mb-4">OBJEDNÁVKA PRIJATÁ!</h1>
-        <p className="text-on-surface-variant max-w-md mb-12">
-          Ďakujeme za váš nákup. Vaša objednávka bola úspešne spracovaná a budeme vás informovať o jej stave.
+        <h1 className="text-4xl font-black mb-4">REZERVÁCIA PRIJATÁ!</h1>
+        <p className="text-on-surface-variant max-w-md mb-12 uppercase text-[10px] font-bold tracking-widest leading-loose">
+          Vaša požiadavka na prípravu tovaru bola odoslaná. Budeme vás kontaktovať ohľadom času prevzatia alebo dovozu. Platba prebieha pri prevzatí.
         </p>
         <Link to="/" className="bg-[#2d2f2b] text-primary px-10 py-5 font-black uppercase text-sm tracking-widest">
           Späť na úvod
@@ -122,22 +122,24 @@ const Checkout = () => {
             <section>
               <h2 className="text-xl font-bold mb-6 flex items-center gap-3">
                 <span className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center text-sm font-black">3</span>
-                Doprava a platba
+                Spôsob prevratia a platby
               </h2>
               <div className="grid grid-cols-1 gap-4">
                 <div className="border border-primary bg-primary/5 p-4 flex justify-between items-center group cursor-pointer">
                    <div className="flex items-center gap-4">
                       <Truck className="text-[#546200]" />
-                      <span className="font-bold text-sm">Kurier DPD / Packeta</span>
+                      <span className="font-bold text-sm uppercase tracking-tight">Dovoz naším vozidlom / Osobný odber v Ľubele</span>
                    </div>
-                   <span className="font-black">GRÁTIS</span>
+                   <span className="font-black text-xs">V CENE</span>
                 </div>
-                <div className="border border-outline/10 p-4 flex justify-between items-center bg-white">
-                   <div className="flex items-center gap-4">
-                      <CreditCard className="text-outline" />
-                      <span className="font-bold text-sm">Prevodom na účet / Dobierka</span>
+                <div className="border border-outline/10 p-6 flex flex-col gap-2 bg-white">
+                   <div className="flex items-center gap-4 text-primary-strong">
+                      <CreditCard size={20} />
+                      <span className="font-black text-sm uppercase tracking-widest">Platba pri prevzatí</span>
                    </div>
-                   <span className="font-black">0,00 €</span>
+                   <p className="text-[10px] font-bold text-outline leading-normal">
+                     Tovar zaplatíte v hotovosti alebo kartou priamo na predajni alebo pri doručení naším šoférom.
+                   </p>
                 </div>
               </div>
             </section>
@@ -178,7 +180,7 @@ const Checkout = () => {
                   disabled={loading}
                   className="w-full bg-primary text-on-primary py-5 font-black uppercase text-sm tracking-widest hover:bg-[#daf900] transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
                  >
-                   {loading ? 'SPRACOVÁVAM...' : 'Potvrdiť objednávku'}
+                   {loading ? 'SPRACOVÁVAM...' : 'Potvrdiť rezerváciu tovaru'}
                    <ChevronRight size={18} />
                  </button>
                  <div className="flex items-center gap-2 justify-center text-[10px] text-outline font-bold uppercase tracking-widest">

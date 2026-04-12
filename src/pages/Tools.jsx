@@ -157,10 +157,8 @@ const Tools = () => {
                       <span className="text-[10px] font-black uppercase tracking-widest text-primary-strong mb-2">{product.category}</span>
                       <h3 className="text-lg font-bold mb-6 line-clamp-2 h-14 group-hover:text-primary transition-colors">{product.name}</h3>
                       
-                      <div className="flex gap-0.5 mb-8">
-                        {[1,2,3,4,5].map(star => (
-                          <Star key={star} size={14} className={cn("fill-current", star <= 4 ? "text-orange-500" : "text-gray-200")} />
-                        ))}
+                      <div className="flex gap-0.5 mb-8 h-4">
+                        {/* Rating removed */}
                       </div>
 
                       <div className="mt-auto flex justify-between items-end">
