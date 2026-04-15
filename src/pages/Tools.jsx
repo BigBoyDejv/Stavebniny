@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ChevronRight, ShoppingCart, Star, Search, Filter, ShoppingBag } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
-import { cn } from '../lib/utils'
+import { cn, getPlaceholderImage } from '../lib/utils'
 
 const Tools = () => {
   const { addToCart } = useCart()
@@ -35,7 +35,7 @@ const Tools = () => {
         .select('*')
         .eq('type', 'tool')
         .order('created_at', { ascending: false })
-      
+
       if (error) throw error
       setProducts(data || [])
     } catch (error) {
@@ -74,12 +74,12 @@ const Tools = () => {
               Profesionálne náradie, farby a ochranné pomôcky pre vašu prácu. Kvalita, na ktorú sa môžete spoľahnúť.
             </p>
           </div>
-          
+
           <div className="flex flex-col gap-6 w-full md:w-auto">
             <div className="relative group">
-              <input 
-                type="text" 
-                placeholder="Hľadať nástroj..." 
+              <input
+                type="text"
+                placeholder="Hľadať nástroj..."
                 className="w-full md:w-80 bg-white p-5 pl-12 text-sm font-bold uppercase tracking-widest border-b-2 border-outline/10 focus:border-primary outline-none transition-all"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -100,13 +100,13 @@ const Tools = () => {
               </h4>
               <div className="flex flex-col gap-1">
                 {categories.map(cat => (
-                  <button 
+                  <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
                     className={cn(
                       "text-left px-4 py-3 text-xs font-bold uppercase tracking-widest transition-all",
-                      selectedCategory === cat 
-                        ? "bg-primary text-on-primary shadow-md" 
+                      selectedCategory === cat
+                        ? "bg-primary text-on-primary shadow-md"
                         : "hover:bg-surface text-on-surface-variant"
                     )}
                   >
@@ -118,7 +118,7 @@ const Tools = () => {
 
             <div>
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-outline mb-6">Zoradiť</h4>
-              <select 
+              <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="w-full bg-white border border-outline/10 p-4 text-xs font-bold uppercase tracking-widest outline-none focus:border-primary"
@@ -135,7 +135,7 @@ const Tools = () => {
         <div className="flex-grow">
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
             {loading ? (
-              [1,2,3,4,5,6].map(i => <div key={i} className="aspect-[3/4] bg-white animate-pulse border border-outline/10"></div>)
+              [1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-[3/4] bg-white animate-pulse border border-outline/10"></div>)
             ) : sortedProducts.length === 0 ? (
               <div className="col-span-full py-20 text-center bg-white border border-dashed border-outline/20">
                 <p className="font-bold text-outline">Nenašli sme žiadne nástroje.</p>
@@ -146,34 +146,34 @@ const Tools = () => {
                 return (
                   <div key={product.id} className="group bg-white border border-outline/10 hover:border-primary/40 transition-all duration-300 flex flex-col">
                     <div className="relative aspect-square p-8 bg-[#fafafa] overflow-hidden">
-                      <img 
-                        src={product.image_url || 'https://via.placeholder.com/400'} 
+                      <img
+                        src={product.image_url || getPlaceholderImage(product.category, 'tool')}
                         alt={product.name}
                         className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
                       />
                     </div>
-                    
+
                     <div className="p-8 flex flex-col flex-grow">
                       <span className="text-[10px] font-black uppercase tracking-widest text-primary-strong mb-2">{product.category}</span>
                       <h3 className="text-lg font-bold mb-6 line-clamp-2 h-14 group-hover:text-primary transition-colors">{product.name}</h3>
-                      
+
                       <div className="flex gap-0.5 mb-8 h-4">
                         {/* Rating removed */}
                       </div>
 
                       <div className="mt-auto flex justify-between items-end">
                         <div className="flex items-start">
-                           <span className="text-3xl font-black tracking-tighter leading-none">{priceStr[0]}</span>
-                           <div className="flex flex-col ml-1">
-                              <span className="text-base font-black leading-none">{priceStr[1]}</span>
-                              <span className="text-lg font-black leading-none">€</span>
-                           </div>
+                          <span className="text-3xl font-black tracking-tighter leading-none">{priceStr[0]}</span>
+                          <div className="flex flex-col ml-1">
+                            <span className="text-base font-black leading-none">{priceStr[1]}</span>
+                            <span className="text-lg font-black leading-none">€</span>
+                          </div>
                         </div>
-                        <button 
-                           onClick={() => addToCart(product)}
-                           className="p-4 bg-surface hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-sm"
+                        <button
+                          onClick={() => addToCart(product)}
+                          className="p-4 bg-surface hover:bg-primary hover:text-on-primary transition-all active:scale-95 shadow-sm"
                         >
-                           <ShoppingBag size={20} />
+                          <ShoppingBag size={20} />
                         </button>
                       </div>
                     </div>

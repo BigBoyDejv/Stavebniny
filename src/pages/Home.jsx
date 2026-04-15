@@ -8,15 +8,15 @@ const Home = () => {
       {/* Hero Section */}
       <section className="relative h-[80vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            className="w-full h-full object-cover" 
+          <img
+            className="w-full h-full object-cover"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2w7e-Vd4pTgIDmk3NZZyBAEv4DfzDFMY3M2Pzdfh8vvRtE8PR2OrmcHp-FSvjqsm5i9po4CUCQVQK1RRL32ahTBRCgy9iHQVU9qK8S9Teeq9QQXQq-9ZrMCLK9b5FtBI6gnbakU8P9wQhu2MQs2tTXcYkmU6hDI4oWxW-7i6cd37-4jFqvh7hmBdC7xK_tmxml1FsfLGoFpaNQQkQBNwp5W5RJ54WJ8oG5wJSCxRnk6PyUwtcraCcx47fNYLh8FQSaRi_VNwbMCqk"
             alt="Hero Warehouse"
           />
           <div className="absolute inset-0 bg-black/40"></div>
         </div>
         <div className="relative z-10 max-w-[1440px] mx-auto px-8 w-full">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}

@@ -9,7 +9,7 @@
     --surface: #f7f7f0;
     --on-surface: #2d2f2b;
   }
-  
+
   body {
     @apply bg-surface text-on-surface font-body;
   }
@@ -25,4 +25,9 @@
 
 .tertiary-gradient {
   background: linear-gradient(135deg, #8b3700 0%, #b24800 100%);
+}
+
+/* Material Symbols replacement helper */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }

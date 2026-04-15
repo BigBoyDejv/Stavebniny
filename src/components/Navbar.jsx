@@ -8,7 +8,7 @@ const Navbar = () => {
   const location = useLocation()
   const { totalItems, setIsCartOpen } = useCart()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  
+
   const isActive = (path) => location.pathname === path
 
   const links = [
@@ -18,7 +18,7 @@ const Navbar = () => {
     { name: 'Požičovňa', path: '/pozicovna' },
     { name: 'Kontakt', path: '/kontakt' }
   ]
-  
+
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#f7f7f0]/80 backdrop-blur-md border-b border-outline/5">
       <div className="flex justify-between items-center px-4 md:px-8 py-3 md:py-4 max-w-[1920px] mx-auto">
@@ -37,8 +37,8 @@ const Navbar = () => {
               to={link.path}
               className={cn(
                 "font-headline uppercase tracking-widest text-[10px] font-black transition-all p-1 border-b-2",
-                isActive(link.path) 
-                  ? "text-primary-strong border-primary" 
+                isActive(link.path)
+                  ? "text-primary-strong border-primary"
                   : "text-[#2d2f2b] border-transparent hover:text-primary-strong"
               )}
             >
@@ -49,7 +49,7 @@ const Navbar = () => {
 
         <div className="flex items-center gap-2 md:gap-6">
           <div className="flex items-center gap-4 md:border-r border-[#e8e9e1] md:pr-6">
-            <button 
+            <button
               onClick={() => setIsCartOpen(true)}
               className="text-[#2d2f2b] hover:text-primary-strong transition-colors relative p-2"
             >
@@ -64,13 +64,13 @@ const Navbar = () => {
               <User size={22} />
             </Link>
           </div>
-          
+
           <Link to="/admin" className="hidden sm:block bg-primary text-on-primary px-6 py-2.5 font-headline uppercase tracking-widest text-[10px] font-black hover:bg-[#daf900] active:scale-95 transition-all">
             PRO PORTÁL
           </Link>
 
           {/* Mobile Menu Toggle */}
-          <button 
+          <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="lg:hidden p-2 text-[#2d2f2b]"
           >
@@ -99,18 +99,18 @@ const Navbar = () => {
             </Link>
           ))}
           <div className="pt-8 mt-8 border-t border-outline/10 flex flex-col gap-4">
-             <Link 
-               to="/admin" 
-               onClick={() => setIsMenuOpen(false)}
-               className="bg-[#2d2f2b] text-primary p-5 font-black uppercase text-center tracking-widest"
-             >
-               Prihlásiť sa (PRO)
-             </Link>
-             <div className="flex justify-center gap-8 py-4">
-               <span className="text-outline text-xs font-bold uppercase">FB</span>
-               <span className="text-outline text-xs font-bold uppercase">IG</span>
-               <span className="text-outline text-xs font-bold uppercase">LI</span>
-             </div>
+            <Link
+              to="/admin"
+              onClick={() => setIsMenuOpen(false)}
+              className="bg-[#2d2f2b] text-primary p-5 font-black uppercase text-center tracking-widest"
+            >
+              Prihlásiť sa (PRO)
+            </Link>
+            <div className="flex justify-center gap-8 py-4">
+              <span className="text-outline text-xs font-bold uppercase">FB</span>
+              <span className="text-outline text-xs font-bold uppercase">IG</span>
+              <span className="text-outline text-xs font-bold uppercase">LI</span>
+            </div>
           </div>
         </div>
       </div>
