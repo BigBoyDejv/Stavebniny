@@ -2,8 +2,12 @@ import React, { useState } from 'react'
 import { Mail, Phone, MapPin, Clock, MessageSquare, Send, CheckCircle, Smartphone, User, HelpCircle, ArrowRight, ShieldCheck, Headphones } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/utils'
+import { toast } from 'react-hot-toast'
+import { useSettings } from '../context/SettingsContext'
+import { Editable } from '../components/Editable'
 
 const Contact = () => {
+  const { settings } = useSettings()
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: 'Všeobecný dopyt', message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -23,7 +27,7 @@ const Contact = () => {
       setSent(true)
       setFormData({ name: '', email: '', phone: '', subject: 'Všeobecný dopyt', message: '' })
     } catch (error) {
-      alert('Chyba pri odosielaní: ' + error.message)
+      toast.error('Chyba pri odosielaní: ' + error.message)
     } finally {
       setLoading(false)
     }
@@ -62,7 +66,11 @@ const Contact = () => {
                 </div>
                 <div>
                   <span className="block text-[10px] font-black uppercase text-outline tracking-widest mb-1">TECHNICKÁ LINKA</span>
-                  <a href="tel:+421903434495" className="text-3xl font-black tracking-tighter hover:text-primary-strong transition-colors">+421 903 434 495</a>
+                  <Editable settingKey="contact_phone" value={settings.contact_phone} type="text" label="Technická linka">
+                    <a href={`tel:${settings.contact_phone}`} className="text-3xl font-black tracking-tighter hover:text-primary-strong transition-colors">
+                      {settings.contact_phone}
+                    </a>
+                  </Editable>
                 </div>
               </div>
             </div>
@@ -171,7 +179,7 @@ const Contact = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <a
-                href="https://wa.me/421903434495"
+                href={`https://wa.me/${settings.contact_phone.replace(/\s+/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex flex-col p-10 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors group"
@@ -208,9 +216,16 @@ const Contact = () => {
                   <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary-strong flex items-center gap-4">
                     <MapPin size={18} /> HLAVNÁ PREDAJŇA
                   </h4>
-                  <div className="text-4xl font-black tracking-tighter uppercase leading-none">
-                    ĽUBEĽA 419 <br /> 032 14 ĽUBEĽA
-                  </div>
+                  <Editable settingKey="contact_address" value={settings.contact_address} type="text" label="Adresa predajne">
+                    <div className="text-4xl font-black tracking-tighter uppercase leading-none whitespace-pre-line">
+                      {settings.contact_address.split(',').map((part, index) => (
+                        <React.Fragment key={index}>
+                          {part.trim()}
+                          {index === 0 && <br />}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </Editable>
                 </div>
 
                 <div className="space-y-8 pt-10 border-t border-outline">
@@ -218,16 +233,26 @@ const Contact = () => {
                     <Clock size={18} /> OTVÁRACIE HODINY
                   </h4>
                   <div className="space-y-4">
-                    {[
-                      { day: 'PONDELOK - PIATOK', time: '07:00 - 12:00, 12:30 - 16:30' },
-                      { day: 'SOBOTA', time: '07:00 - 11:00' },
-                      { day: 'NEDEĽA', time: 'ZATVORENÉ', status: 'closed' }
-                    ].map((h, i) => (
-                      <div key={i} className="flex justify-between items-center text-xs font-black tracking-widest">
-                        <span className="opacity-40">{h.day}</span>
-                        <span className={cn(h.status === 'closed' ? "text-error" : "text-on-surface")}>{h.time}</span>
-                      </div>
-                    ))}
+                    <div className="flex justify-between items-center text-xs font-black tracking-widest">
+                      <span className="opacity-40">PONDELOK - PIATOK</span>
+                      <Editable settingKey="hours_weekday" value={settings.hours_weekday} type="text" label="Otváracie hodiny Po-Pi">
+                        <span className="text-on-surface">{settings.hours_weekday}</span>
+                      </Editable>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-black tracking-widest">
+                      <span className="opacity-40">SOBOTA</span>
+                      <Editable settingKey="hours_saturday" value={settings.hours_saturday} type="text" label="Otváracie hodiny So">
+                        <span className="text-on-surface">{settings.hours_saturday}</span>
+                      </Editable>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-black tracking-widest">
+                      <span className="opacity-40">NEDEĽA</span>
+                      <Editable settingKey="hours_sunday" value={settings.hours_sunday} type="text" label="Otváracie hodiny Ne">
+                        <span className={cn(settings.hours_sunday.toLowerCase().includes('zatvor') ? "text-error" : "text-on-surface")}>
+                          {settings.hours_sunday}
+                        </span>
+                      </Editable>
+                    </div>
                   </div>
                 </div>
 
@@ -236,16 +261,22 @@ const Contact = () => {
                   <div className="grid grid-cols-1 gap-6 text-[11px] font-black tracking-widest uppercase">
                     <div>
                       <span className="block opacity-40 mb-1">OBCHODNÉ MENO</span>
-                      STAVIVÁLUBELA S.R.O.
+                      <Editable settingKey="billing_name" value={settings.billing_name} type="text" label="Obchodné meno">
+                        <span>{settings.billing_name}</span>
+                      </Editable>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="block opacity-40 mb-1">IČO</span>
-                        52 079 716
+                        <Editable settingKey="billing_ico" value={settings.billing_ico} type="text" label="IČO">
+                          <span>{settings.billing_ico}</span>
+                        </Editable>
                       </div>
                       <div>
                         <span className="block opacity-40 mb-1">IČ DPH</span>
-                        SK2120884161
+                        <Editable settingKey="billing_icdph" value={settings.billing_icdph} type="text" label="IČ DPH">
+                          <span>{settings.billing_icdph}</span>
+                        </Editable>
                       </div>
                     </div>
                   </div>
@@ -260,4 +291,3 @@ const Contact = () => {
 }
 
 export default Contact
-

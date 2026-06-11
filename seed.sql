@@ -1,4 +1,4 @@
--- SEED DATA PRE STAVEBNINY ĽUBEĽA
+  -- SEED DATA PRE STAVEBNINY ĽUBEĽA
 -- Rozšírená databáza pre profesionálnu ukážku e-shopu v2.0
 
 -- Reset tabuliek

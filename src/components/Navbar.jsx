@@ -14,7 +14,9 @@ const Navbar = () => {
   const links = [
     { name: 'Domov', path: '/' },
     { name: 'Materiály', path: '/materialy' },
-    { name: 'Nástroje', path: '/nastroje' },
+    { name: 'Náradie', path: '/naradie' },
+    { name: 'Poľnohospodárske produkty', path: '/polnohospodarske-produkty' },
+    { name: 'Farby/Laky', path: '/farby-laky' },
     { name: 'Požičovňa', path: '/pozicovna' },
     { name: 'Kontakt', path: '/kontakt' }
   ]
@@ -30,13 +32,13 @@ const Navbar = () => {
         </Link>
 
         {/* Desktop Links */}
-        <div className="hidden lg:flex items-center space-x-10">
+        <div className="hidden lg:flex items-center space-x-6 xl:space-x-8">
           {links.map((link) => (
             <Link
               key={link.path}
               to={link.path}
               className={cn(
-                "font-headline uppercase tracking-widest text-[10px] font-black transition-all p-1 border-b-2",
+                "font-body uppercase tracking-wider text-[11px] font-bold transition-all p-1 border-b-2",
                 isActive(link.path)
                   ? "text-primary-strong border-primary"
                   : "text-[#2d2f2b] border-transparent hover:text-primary-strong"
@@ -81,28 +83,28 @@ const Navbar = () => {
 
       {/* Mobile Menu Overlay */}
       <div className={cn(
-        "fixed inset-0 top-[60px] md:top-[72px] bg-white z-[60] transition-all duration-300 lg:hidden",
+        "fixed inset-0 top-[60px] md:top-[72px] bg-white z-[60] transition-all duration-300 lg:hidden overflow-y-auto",
         isMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
       )}>
-        <div className="flex flex-col p-8 space-y-6">
+        <div className="flex flex-col p-8 space-y-5 pb-24">
           {links.map((link) => (
             <Link
               key={link.path}
               to={link.path}
               onClick={() => setIsMenuOpen(false)}
               className={cn(
-                "text-3xl font-black uppercase tracking-tighter transition-colors",
+                "text-xl font-bold uppercase tracking-tight transition-colors",
                 isActive(link.path) ? "text-primary-strong" : "text-[#2d2f2b] hover:text-primary-strong"
               )}
             >
               {link.name}
             </Link>
           ))}
-          <div className="pt-8 mt-8 border-t border-outline/10 flex flex-col gap-4">
+          <div className="pt-6 mt-6 border-t border-outline/10 flex flex-col gap-4">
             <Link
               to="/admin"
               onClick={() => setIsMenuOpen(false)}
-              className="bg-[#2d2f2b] text-primary p-5 font-black uppercase text-center tracking-widest"
+              className="bg-[#2d2f2b] text-primary p-5 font-black uppercase text-center tracking-widest text-xs"
             >
               Prihlásiť sa (PRO)
             </Link>

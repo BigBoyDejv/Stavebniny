@@ -178,7 +178,7 @@ const Catalog = () => {
                   <div
                     key={product.id}
                     className="group bg-white border border-outline/10 hover:border-primary/40 transition-all duration-300 flex flex-col cursor-pointer"
-                    onClick={() => { setSelectedProduct(product); setModalQty(1); setShowDetailModal(true); }}
+                    onClick={() => { setSelectedProduct(product); setModalQty(1); }}
                   >
                     {/* Image container */}
                     <div className="relative aspect-square overflow-hidden p-6 bg-[#fcfcfc]">
@@ -215,7 +215,7 @@ const Catalog = () => {
                             <div className="flex flex-col ml-1">
                               <span className="text-base font-black leading-none">{priceStr[1]}</span>
                               <span className="text-lg font-black leading-none">€*</span>
-                              <p className="text-[10px] text-outline mt-1 font-medium">{product.price.toFixed(2)} € / ks</p>
+                              <p className="text-[10px] text-outline mt-1 font-medium">{product.price.toFixed(2)} € / {product.unit || 'ks'}</p>
                             </div>
                           </div>
                         </div>
@@ -271,7 +271,7 @@ const Catalog = () => {
                     "px-3 py-1 text-[10px] font-black uppercase tracking-widest border-2",
                     selectedProduct.stock_quantity > 0 ? "border-emerald-500 text-emerald-600" : "border-zinc-300 text-zinc-400"
                   )}>
-                    {selectedProduct.stock_quantity > 0 ? `SKLADOM ${selectedProduct.stock_quantity} KS` : "NA OBJEDNÁVKU"}
+                    {selectedProduct.stock_quantity > 0 ? `SKLADOM ${selectedProduct.stock_quantity} ${selectedProduct.unit ? selectedProduct.unit.toUpperCase() : 'KS'}` : "NA OBJEDNÁVKU"}
                   </div>
                 </div>
 
@@ -297,7 +297,7 @@ const Catalog = () => {
                       onClick={() => setModalQty(Math.max(1, modalQty - 1))}
                       className="p-4 hover:bg-primary/20 transition-colors"
                     ><Minus size={20} /></button>
-                    <span className="w-12 text-center font-black text-lg">{modalQty}</span>
+                    <span className="min-w-[4rem] px-2 text-center font-black text-lg">{modalQty} {selectedProduct.unit || 'ks'}</span>
                     <button
                       onClick={() => setModalQty(modalQty + 1)}
                       className="p-4 hover:bg-primary/20 transition-colors"

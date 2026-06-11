@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
 import { cn, getPlaceholderImage } from '../lib/utils'
 
-const Tools = () => {
+const Agriculture = () => {
   const { addToCart } = useCart()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -17,7 +17,7 @@ const Tools = () => {
   const [modalQty, setModalQty] = useState(1)
 
   useEffect(() => {
-    fetchTools()
+    fetchAgriculture()
     fetchCategories()
   }, [])
 
@@ -25,25 +25,23 @@ const Tools = () => {
     const { data } = await supabase
       .from('categories')
       .select('name')
-      .eq('type', 'tool')
-      .neq('name', 'Farby a laky')
+      .eq('type', 'agriculture')
       .order('name')
     if (data) setCategories(['Všetko', ...data.map(c => c.name)])
   }
 
-  const fetchTools = async () => {
+  const fetchAgriculture = async () => {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('type', 'tool')
-        .neq('category', 'Farby a laky')
+        .eq('type', 'agriculture')
         .order('created_at', { ascending: false })
 
       if (error) throw error
       setProducts(data || [])
     } catch (error) {
-      console.error('Error fetching tools:', error.message)
+      console.error('Error fetching agriculture:', error.message)
     } finally {
       setLoading(false)
     }
@@ -66,15 +64,15 @@ const Tools = () => {
       <nav className="flex items-center gap-2 mb-8 text-sm font-label tracking-wide text-on-surface-variant">
         <Link className="hover:text-primary transition-colors" to="/">DOMOV</Link>
         <ChevronRight size={14} />
-        <span className="text-on-surface font-semibold uppercase">NÁRADIE</span>
+        <span className="text-on-surface font-semibold uppercase">POĽNOHOSPODÁRSKE PRODUKTY</span>
       </nav>
 
       <section className="mb-16">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
           <div className="max-w-3xl">
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 uppercase">Náradie</h1>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 uppercase">Poľnohospodárstvo</h1>
             <p className="text-lg text-on-surface-variant max-w-xl font-medium border-l-4 border-primary pl-6">
-              Profesionálne ručné a elektrické náradie a ochranné pomôcky pre vašu prácu.
+              Krmivá, hnojivá, substráty a osivá pre vašu záhradu a poľnohospodársku činnosť.
             </p>
           </div>
 
@@ -82,7 +80,7 @@ const Tools = () => {
             <div className="relative group">
               <input
                 type="text"
-                placeholder="Hľadať náradie..."
+                placeholder="Hľadať produkt..."
                 className="w-full md:w-80 bg-white p-5 pl-12 text-sm font-bold uppercase tracking-widest border-b-2 border-outline/10 focus:border-primary outline-none transition-all"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -141,7 +139,7 @@ const Tools = () => {
               [1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-[3/4] bg-white animate-pulse border border-outline/10"></div>)
             ) : sortedProducts.length === 0 ? (
               <div className="col-span-full py-20 text-center bg-white border border-dashed border-outline/20">
-                <p className="font-bold text-outline">Nenašli sme žiadne náradie.</p>
+                <p className="font-bold text-outline">Nenašli sme žiadne produkty.</p>
               </div>
             ) : (
                sortedProducts.map((product) => {
@@ -212,7 +210,7 @@ const Tools = () => {
             <div className="w-full md:w-1/2 p-6 md:p-16 overflow-y-auto flex flex-col">
               <div className="mb-auto">
                 <span className="text-primary-strong font-bold tracking-[0.2em] text-[10px] md:text-xs uppercase mb-2 md:mb-4 block">
-                  {selectedProduct.category || 'Náradie'}
+                  {selectedProduct.category || 'Poľnohospodársky produkt'}
                 </span>
                 <h2 className="text-2xl md:text-5xl font-black tracking-tighter mb-4 md:mb-6 leading-none">
                   {selectedProduct.name}
@@ -260,7 +258,7 @@ const Tools = () => {
                     ><Plus size={20} /></button>
                   </div>
                   <div className="text-[10px] font-bold uppercase text-outline tracking-wider leading-tight">
-                    Presné množstvo pre prácu
+                    Presné množstvo
                   </div>
                 </div>
 
@@ -284,4 +282,4 @@ const Tools = () => {
   )
 }
 
-export default Tools
+export default Agriculture

@@ -1,55 +1,41 @@
 import React, { useEffect, useState } from 'react'
-import { CheckCircle, Info, Search, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { 
+  CheckCircle, Info, Search, X, Calendar, ShieldCheck, 
+  HelpCircle, ChevronRight, CheckCircle2, AlertTriangle, Plus, Minus
+} from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { cn, getPlaceholderImage } from '../lib/utils'
+import { toast } from 'react-hot-toast'
+import { RENTAL_ITEMS, RENTAL_CATEGORIES, GENERAL_RENTAL_TERMS } from '../lib/rentalData'
 
 const Rental = () => {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [categories, setCategories] = useState(['Všetko'])
+  const [categories, setCategories] = useState(RENTAL_CATEGORIES)
   const [selectedCategory, setSelectedCategory] = useState('Všetko')
   const [searchQuery, setSearchQuery] = useState('')
+  const [bookings, setBookings] = useState([])
+
+  // Modal & Selection States
+  const [selectedForBooking, setSelectedForBooking] = useState(null)
+  const [durationMode, setDurationMode] = useState('24h') // '4h' | '24h' | '3days'
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [selectedAccIds, setSelectedAccIds] = useState([]) // list of accessory ids selected
+  
   const [inquiryData, setInquiryData] = useState({
-    name: '', phone: '', item: '', startDate: '', endDate: ''
+    name: '', email: '', phone: '', message: ''
   })
   const [sending, setSending] = useState(false)
-  const [selectedForBooking, setSelectedForBooking] = useState(null)
-
-  const handleInquiry = async (e) => {
-    e.preventDefault()
-    setSending(true)
-    try {
-      const { error } = await supabase.from('inquiries').insert([{
-        name: inquiryData.name,
-        email: inquiryData.email,
-        message: `ZÁUJEM O PRENÁJOM: ${inquiryData.item}\nTERMÍN: ${inquiryData.startDate} až ${inquiryData.endDate}\nTELEFÓN: ${inquiryData.phone}\nPOZNÁMKA: ${inquiryData.message || 'Žiadna'}`,
-      }])
-      if (error) throw error
-      setSelectedForBooking(null)
-      alert('Dopyt bol odoslaný! Budeme vás čoskoro kontaktovať.')
-      setInquiryData({ name: '', phone: '', item: '', startDate: '', endDate: '' })
-    } catch (err) {
-      alert(err.message)
-    } finally {
-      setSending(false)
-    }
-  }
 
   useEffect(() => {
     fetchRentals()
-    fetchCategories()
+    fetchBookings()
   }, [])
 
-  const fetchCategories = async () => {
-    const { data } = await supabase
-      .from('categories')
-      .select('name')
-      .eq('type', 'rental')
-      .order('name')
-    if (data) setCategories(['Všetko', ...data.map(c => c.name)])
-  }
-
   const fetchRentals = async () => {
+    setLoading(true)
     try {
       const { data, error } = await supabase
         .from('rental_items')
@@ -57,32 +43,205 @@ const Rental = () => {
         .order('name', { ascending: true })
 
       if (error) throw error
-      setItems(data || [])
+      if (data && data.length > 0) {
+        setItems(data)
+      } else {
+        setItems(RENTAL_ITEMS)
+      }
     } catch (error) {
       console.error('Error fetching rentals:', error.message)
+      setItems(RENTAL_ITEMS)
     } finally {
       setLoading(false)
     }
   }
 
+  const fetchBookings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('rental_bookings')
+        .select('*')
+        .eq('status', 'approved')
+      if (error) throw error
+      setBookings(data || [])
+    } catch (err) {
+      console.error('Error fetching approved bookings:', err.message)
+    }
+  }
+
+  // Verify if a tool is reserved for today
+  const isItemReservedToday = (itemId) => {
+    const today = new Date().toISOString().split('T')[0]
+    return bookings.some(booking => 
+      booking.rental_item_id === itemId && 
+      booking.start_date <= today && 
+      booking.end_date >= today
+    )
+  }
+
+  // Calculate rental cost details based on selection
+  const calculateCost = (item) => {
+    if (!item) return { rentCost: 0, accCost: 0, daysCount: 0, discount: 0, total: 0 }
+
+    let rentCost = 0
+    let daysCount = 1
+    let discount = 0
+
+    if (durationMode === '4h') {
+      rentCost = item.price4h
+      daysCount = 0.5
+    } else {
+      // Parse dates to get days difference
+      if (startDate && endDate) {
+        const start = new Date(startDate)
+        const end = new Date(endDate)
+        const diffTime = Math.abs(end - start)
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+        daysCount = diffDays > 0 ? diffDays : 1
+      } else {
+        daysCount = durationMode === '3days' ? 3 : 1
+      }
+
+      const baseDailyRate = item.price24h
+      if (daysCount >= 3) {
+        discount = 10 // 10% discount
+        rentCost = baseDailyRate * daysCount * 0.90
+      } else {
+        rentCost = baseDailyRate * daysCount
+      }
+    }
+
+    // Accessory pricing
+    let accCost = 0
+    item.accessories.forEach(acc => {
+      if (selectedAccIds.includes(acc.id)) {
+        accCost += acc.price
+      }
+    })
+
+    return {
+      rentCost,
+      accCost,
+      daysCount,
+      discount,
+      total: rentCost + accCost
+    }
+  }
+
+  const handleInquirySubmit = async (e) => {
+    e.preventDefault()
+    
+    // Validations
+    if (durationMode !== '4h' && (!startDate || !endDate)) {
+      toast.error('Prosím zvoľte termín prenájmu (dátum od a do).')
+      return
+    }
+    if (durationMode === '4h' && !startDate) {
+      toast.error('Prosím zvoľte dátum prenájmu.')
+      return
+    }
+
+    setSending(true)
+    const costDetails = calculateCost(selectedForBooking)
+    const chosenAccs = selectedForBooking.accessories
+      .filter(a => selectedAccIds.includes(a.id))
+      .map(a => `${a.name} (${a.price.toFixed(2)} €)`)
+      .join(', ') || 'Žiadne'
+
+    // Format dates for DB
+    const finalStartDate = startDate
+    const finalEndDate = durationMode === '4h' ? startDate : endDate
+
+    const detailSummary = `PRENAJATÁ TECHNIKA: ${selectedForBooking.name}
+DOBA: ${durationMode === '4h' ? 'Do 4 hodín' : `${costDetails.daysCount} dní (${startDate} až ${endDate})`}
+VYBRANÉ DOPLNKY: ${chosenAccs}
+KAVCIE (VRATNÁ ZÁLOHA): ${selectedForBooking.deposit} €
+NÁJOMNÉ: ${costDetails.rentCost.toFixed(2)} €
+PRÍSLUŠENSTVO: ${costDetails.accCost.toFixed(2)} €
+CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v hotovosti pri prevzatí)`
+
+    try {
+      // 1. Insert into rental bookings
+      const { error: bookingError } = await supabase.from('rental_bookings').insert([{
+        customer_name: inquiryData.name,
+        customer_email: inquiryData.email,
+        customer_phone: inquiryData.phone,
+        start_date: finalStartDate,
+        end_date: finalEndDate,
+        note: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
+        status: 'pending'
+      }])
+      
+      if (bookingError) throw bookingError
+
+      // 2. Insert inquiry copy for backup
+      await supabase.from('inquiries').insert([{
+        name: inquiryData.name,
+        email: inquiryData.email,
+        message: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
+      }])
+
+      toast.success('Rezervačná požiadavka bola úspešne odoslaná! Budeme vás kontaktovať.')
+      setSelectedForBooking(null)
+      setInquiryData({ name: '', email: '', phone: '', message: '' })
+      setSelectedAccIds([])
+      setStartDate('')
+      setEndDate('')
+      fetchBookings()
+    } catch (err) {
+      toast.error('Nepodarilo sa odoslať rezerváciu: ' + err.message)
+    } finally {
+      setSending(false)
+    }
+  }
 
   const filteredItems = items.filter(item => {
-    const matchesCategory = selectedCategory === 'Všetko' || (item.category || 'Iné') === selectedCategory
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = selectedCategory === 'Všetko' || item.category === selectedCategory
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          item.description.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCategory && matchesSearch
   })
 
+  // Autofill start and end date helper when choosing duration preset
+  const handleDurationTabChange = (mode) => {
+    setDurationMode(mode)
+    if (mode === '4h') {
+      setEndDate('')
+    } else if (mode === '24h') {
+      const today = new Date().toISOString().split('T')[0]
+      setStartDate(today)
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      setEndDate(tomorrow)
+    } else if (mode === '3days') {
+      const today = new Date().toISOString().split('T')[0]
+      setStartDate(today)
+      const thirdDay = new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]
+      setEndDate(thirdDay)
+    }
+  }
+
+  const triggerOpenBookingModal = (item) => {
+    setSelectedForBooking(item)
+    // Initial preset dates
+    const today = new Date().toISOString().split('T')[0]
+    setStartDate(today)
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    setEndDate(tomorrow)
+    setDurationMode('24h')
+    setSelectedAccIds([])
+  }
+
   return (
     <div className="pt-28 pb-20 min-h-screen bg-[#fcfcf8]">
-      {/* Header Section */}
+      {/* Header Info Section */}
       <section className="bg-white border-b border-outline/5 py-16 px-8 mb-12">
         <div className="max-w-[1440px] mx-auto">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12">
             <div className="max-w-3xl">
-              <span className="text-primary-strong font-black uppercase tracking-[0.3em] text-[10px] mb-4 block">Profesionálna technika</span>
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-none">POŽIČOVŇA <br className="hidden md:block" /> ĽUBEĽA</h1>
+              <span className="text-primary-strong font-black uppercase tracking-[0.3em] text-[10px] mb-4 block">Areál Stavebnín Ľubeľa</span>
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-none">POŽIČOVŇA NÁRADIA</h1>
               <p className="text-lg text-on-surface-variant font-medium max-w-xl border-l-4 border-primary pl-6">
-                Špičkové stroje pre zemné práce, hutnenie a špecializované stavebné úkony. Všetko s pravidelným servisom.
+                Hutniaca technika, búracie kladivá, píly a odvlhčovače. Nájdite správne náradie pre svoj projekt a zarezervujte si ho online.
               </p>
             </div>
 
@@ -90,201 +249,371 @@ const Rental = () => {
               <div className="relative group">
                 <input
                   type="text"
-                  placeholder="Hľadať v ponuke..."
+                  placeholder="Hľadať náradie..."
                   className="w-full lg:w-80 bg-surface p-5 pl-12 text-sm font-bold uppercase tracking-widest border-b-2 border-outline/10 focus:border-primary outline-none transition-all group-hover:bg-white"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
                 <Search className="absolute left-4 top-5 text-outline/40 group-hover:text-primary transition-colors" size={20} />
               </div>
-              <div className="flex flex-wrap gap-2">
-                {categories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={cn(
-                      "px-6 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
-                      selectedCategory === cat ? "bg-primary text-on-primary shadow-lg" : "bg-white border border-outline/10 hover:border-primary"
-                    )}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
             </div>
+          </div>
+
+          {/* Categories Horizontal Filter */}
+          <div className="flex flex-wrap gap-2 mt-8 border-t border-outline/5 pt-6">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={cn(
+                  "px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all",
+                  selectedCategory === cat 
+                    ? "bg-primary text-on-primary shadow-md" 
+                    : "bg-surface text-on-surface hover:bg-white border border-outline/5"
+                )}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Grid Section */}
+      {/* Grid Content */}
       <div className="max-w-[1440px] mx-auto px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {loading ? (
-            [1, 2, 3].map(i => <div key={i} className="aspect-[4/5] bg-surface animate-pulse"></div>)
+            [1, 2, 3, 4].map(i => <div key={i} className="aspect-[4/5] bg-white border border-outline/5 animate-pulse"></div>)
           ) : filteredItems.length === 0 ? (
             <div className="col-span-full py-32 text-center bg-white border border-dashed border-outline/20">
               <Info size={48} className="mx-auto mb-4 text-outline/30" />
-              <p className="font-black uppercase tracking-widest text-[#546200]">Nenašli sme žiadnu techniku</p>
+              <p className="font-black uppercase tracking-widest text-outline">Nenašli sme žiadne zodpovedajúce náradie</p>
             </div>
           ) : (
-            filteredItems.map(item => (
-              <div key={item.id} className="group bg-white flex flex-col h-full border border-outline/5 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 overflow-hidden">
-                <div className="relative aspect-[4/3] overflow-hidden bg-surface">
-                  <img
-                    src={item.image_url || getPlaceholderImage(item.category, 'rental')}
-                    alt={item.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-
-                  <div className="absolute top-4 left-4 flex flex-col gap-2">
-                    {item.availability && (
-                      <span className="bg-emerald-500 text-white px-3 py-1 text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
-                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div> Dostupné
+            filteredItems.map(item => {
+              const reserved = isItemReservedToday(item.id)
+              return (
+                <div 
+                  key={item.id} 
+                  className="group bg-white border border-outline/10 hover:border-primary/40 transition-all duration-300 flex flex-col h-full cursor-pointer shadow-sm"
+                  onClick={() => triggerOpenBookingModal(item)}
+                >
+                  <div className="relative aspect-[4/3] bg-surface overflow-hidden">
+                    <img
+                      src={item.imageUrl || item.image_url || getPlaceholderImage(item.category, 'rental')}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    
+                    {/* Status Badge */}
+                    <div className="absolute top-4 left-4 flex flex-col gap-2">
+                      {reserved ? (
+                        <span className="bg-amber-600 text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">
+                          Dnes rezervovaný
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-600 text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">
+                          Dostupný
+                        </span>
+                      )}
+                      <span className="bg-white/95 text-on-surface border border-outline/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider">
+                        {item.category}
                       </span>
-                    )}
-                    <span className="bg-white/90 backdrop-blur-md px-3 py-1 text-[9px] font-black uppercase tracking-widest shadow-md">
-                      {item.category || 'Technika'}
-                    </span>
-                  </div>
-
-                  <div className="absolute bottom-4 right-4 bg-primary text-on-primary p-4 shadow-xl -mb-20 group-hover:mb-0 transition-all duration-500">
-                    <span className="block text-[8px] font-black uppercase opacity-60">Cena / Deň</span>
-                    <span className="text-xl font-black">{item.daily_price}€</span>
-                  </div>
-                </div>
-
-                <div className="p-8 flex-grow flex flex-col">
-                  <h3 className="text-2xl font-black tracking-tight mb-4 group-hover:text-primary transition-colors">{item.name}</h3>
-                  <div className="space-y-3 mb-10 opacity-70">
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-                      <CheckCircle size={14} className="text-primary-strong" /> Profesionálny servis
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-                      <CheckCircle size={14} className="text-primary-strong" /> Okamžitý odber
+
+                    {/* Quick Pricing Ribbon */}
+                    <div className="absolute bottom-4 right-4 bg-primary text-on-primary px-3 py-2 shadow-lg font-black text-xs uppercase tracking-wider">
+                      do 24h: {item.price24h.toFixed(2)} €
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      console.log('Booking item:', item.name);
-                      setSelectedForBooking(item);
-                      setInquiryData({ ...inquiryData, item: item.name });
-                    }}
-                    className="mt-auto w-full border-2 border-on-surface p-4 font-black uppercase tracking-[0.2em] text-[10px] hover:bg-on-surface hover:text-white transition-all active:scale-[0.98] cursor-pointer"
-                  >
-                    Rezervovať techniku
-                  </button>
+                  <div className="p-6 flex-grow flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-on-surface mb-2 line-clamp-2 h-10 group-hover:text-primary transition-colors">
+                        {item.name}
+                      </h3>
+                      <p className="text-xs text-on-surface-variant font-medium line-clamp-3 mb-6">
+                        {item.description}
+                      </p>
+                    </div>
+
+                    <div className="pt-4 border-t border-outline/5 space-y-3">
+                      <div className="flex justify-between text-[11px] font-bold text-outline uppercase tracking-wider">
+                        <span>Do 4 hod:</span>
+                        <span className="text-on-surface">{item.price4h.toFixed(2)} €</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] font-bold text-outline uppercase tracking-wider">
+                        <span>Do 24 hod:</span>
+                        <span className="text-on-surface">{item.price24h.toFixed(2)} €</span>
+                      </div>
+                      {item.note && (
+                        <div className="text-[10px] text-primary-strong font-black uppercase tracking-widest bg-primary/10 px-2 py-1 inline-block">
+                          {item.note}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>
 
-      {/* Booking Modal */}
-      {selectedForBooking && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-on-surface/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 relative shadow-2xl">
-            <button
-              onClick={() => setSelectedForBooking(null)}
-              className="absolute top-6 right-6 z-10 p-2 bg-white text-on-surface hover:bg-primary transition-colors"
-            ><X size={24} /></button>
+      {/* Booking Form Dialog Modal */}
+      {selectedForBooking && (() => {
+        const cost = calculateCost(selectedForBooking)
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-[#2d2f2b]/70 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white w-full max-w-5xl shadow-2xl relative flex flex-col md:flex-row max-h-[95vh] overflow-hidden animate-in zoom-in-95 duration-200">
+              
+              {/* Modal Close */}
+              <button
+                onClick={() => setSelectedForBooking(null)}
+                className="absolute top-4 right-4 md:top-6 md:right-6 z-10 bg-white p-1.5 hover:text-primary transition-colors rounded-full shadow-lg"
+              ><X size={24} /></button>
 
-            <div className="relative h-64 md:h-full overflow-hidden bg-surface">
-              <img src={selectedForBooking.image_url || getPlaceholderImage(selectedForBooking.category, 'rental')} alt="" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-primary/10"></div>
-              <div className="absolute bottom-10 left-10 text-white">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-80 decoration-primary decoration-2 underline underline-offset-4">Požiadavka na prenájom</span>
-                <h2 className="text-4xl font-black tracking-tighter mt-4 max-w-xs">{selectedForBooking.name}</h2>
+              {/* Left Column - Image & Terms info */}
+              <div className="w-full md:w-1/2 bg-surface flex flex-col">
+                <div className="aspect-[16/10] md:flex-grow relative overflow-hidden">
+                  <img src={selectedForBooking.imageUrl || selectedForBooking.image_url || getPlaceholderImage(selectedForBooking.category, 'rental')} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"></div>
+                  <div className="absolute bottom-6 left-6 right-6 text-white">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-primary block mb-1">
+                      {selectedForBooking.category}
+                    </span>
+                    <h2 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
+                      {selectedForBooking.name}
+                    </h2>
+                  </div>
+                </div>
+                <div className="p-6 bg-[#1d1f1c] text-white space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">Podmienky zapožičania</h4>
+                  <ul className="text-[11px] text-zinc-300 space-y-2 list-none p-0 font-medium">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-black">•</span>
+                      <span><strong>Vratná kaucia:</strong> Vyžaduje sa záloha vo výške <strong>{selectedForBooking.deposit} €</strong>, ktorá sa skladá v hotovosti pri prevzatí stroja.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-black">•</span>
+                      <span><strong>Znečistenie:</strong> V prípade vrátenia silne znečisteného stroja alebo kufra účtujeme poplatok <strong>10.00 €</strong> za čistenie.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-black">•</span>
+                      <span><strong>Dlhodobý prenájom:</strong> Nad 3 dni automaticky uplatňujeme <strong>zľavu 10%</strong> na cenu denného nájmu.</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
-            </div>
 
-            <div className="p-8 md:p-12">
-              <h3 className="text-xl font-black uppercase tracking-widest mb-8 border-b-4 border-primary inline-block">Rezervačný formulár</h3>
-              <form onSubmit={handleInquiry} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-outline">Vaše meno</label>
-                    <input
-                      required
-                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
-                      placeholder="JOZEF MRKVIČKA"
-                      value={inquiryData.name}
-                      onChange={e => setInquiryData({ ...inquiryData, name: e.target.value.toUpperCase() })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-outline">E-mail</label>
-                    <input
-                      required type="email"
-                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
-                      placeholder="EMAIL@PRIKLAD.SK"
-                      value={inquiryData.email || ''}
-                      onChange={e => setInquiryData({ ...inquiryData, email: e.target.value })}
-                    />
-                  </div>
-                </div>
+              {/* Right Column - Booking Details Form */}
+              <div className="w-full md:w-1/2 p-6 md:p-10 overflow-y-auto flex flex-col">
+                <h3 className="text-lg font-black uppercase tracking-wider mb-6 pb-2 border-b-2 border-primary inline-block self-start">
+                  Dopyt na prenájom
+                </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-outline">Telefón</label>
-                    <input
-                      required
-                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
-                      placeholder="+421 ..."
-                      type="tel"
-                      value={inquiryData.phone}
-                      onChange={e => setInquiryData({ ...inquiryData, phone: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleInquirySubmit} className="space-y-6 flex-grow flex flex-col justify-between">
+                  {/* Step 1: Duration settings */}
+                  <div className="space-y-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-outline">Od dátumu</label>
+                      <label className="text-[10px] font-black uppercase tracking-wider text-outline block">Doba prenájmu</label>
+                      
+                      <div className="grid grid-cols-3 bg-surface p-1 border border-outline/10">
+                        <button
+                          type="button"
+                          onClick={() => handleDurationTabChange('4h')}
+                          className={cn(
+                            "py-2 text-[10px] font-black uppercase transition-all text-center",
+                            durationMode === '4h' ? "bg-[#2d2f2b] text-primary" : "text-outline hover:text-on-surface"
+                          )}
+                        >
+                          Do 4 hodín
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDurationTabChange('24h')}
+                          className={cn(
+                            "py-2 text-[10px] font-black uppercase transition-all text-center",
+                            durationMode === '24h' ? "bg-[#2d2f2b] text-primary" : "text-outline hover:text-on-surface"
+                          )}
+                        >
+                          1 - 2 dni
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDurationTabChange('3days')}
+                          className={cn(
+                            "py-2 text-[10px] font-black uppercase transition-all text-center",
+                            durationMode === '3days' ? "bg-[#2d2f2b] text-primary" : "text-outline hover:text-on-surface"
+                          )}
+                        >
+                          3+ dni (-10%)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Date Pickers */}
+                    <div className="grid grid-cols-2 gap-4 bg-surface p-4 border border-outline/5">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-outline">Dátum od</label>
+                        <input
+                          type="date"
+                          required
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      
+                      {durationMode !== '4h' && (
+                        <div className="space-y-1 animate-in fade-in duration-200">
+                          <label className="text-[10px] font-bold uppercase text-outline">Dátum do</label>
+                          <input
+                            type="date"
+                            required
+                            min={startDate}
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Accessory options if present */}
+                    {selectedForBooking.accessories && selectedForBooking.accessories.length > 0 && (
+                      <div className="pt-2">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-outline block mb-2">Odporúčame tiež</label>
+                        <div className="space-y-2">
+                          {selectedForBooking.accessories.map(acc => {
+                            const isChecked = selectedAccIds.includes(acc.id)
+                            return (
+                              <label
+                                key={acc.id}
+                                className={cn(
+                                  "flex items-center justify-between p-3 border cursor-pointer select-none transition-colors",
+                                  isChecked ? "bg-primary/5 border-primary" : "bg-white border-outline/10 hover:bg-surface"
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedAccIds([...selectedAccIds, acc.id])
+                                      } else {
+                                        setSelectedAccIds(selectedAccIds.filter(id => id !== acc.id))
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-primary bg-zinc-100 border-zinc-300 focus:ring-primary rounded-none"
+                                  />
+                                  <span className="text-xs font-bold text-on-surface">{acc.name}</span>
+                                </div>
+                                <span className="text-xs font-black shrink-0 ml-4">
+                                  +{acc.price.toFixed(2)} € {acc.flat ? '' : '/ 1mm'}
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Customer detail form fields */}
+                  <div className="space-y-4 pt-4 border-t border-outline/5">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-outline">Meno a priezvisko</label>
+                        <input
+                          required
+                          value={inquiryData.name}
+                          onChange={e => setInquiryData({ ...inquiryData, name: e.target.value })}
+                          className="w-full bg-surface p-3 text-xs font-bold border-none focus:ring-1 focus:ring-primary outline-none"
+                          placeholder="Meno priezvisko"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold uppercase text-outline">Telefónne číslo</label>
+                        <input
+                          required
+                          type="tel"
+                          value={inquiryData.phone}
+                          onChange={e => setInquiryData({ ...inquiryData, phone: e.target.value })}
+                          className="w-full bg-surface p-3 text-xs font-bold border-none focus:ring-1 focus:ring-primary outline-none"
+                          placeholder="+421 ..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase text-outline">E-mailová adresa</label>
                       <input
-                        required type="date"
-                        className="w-full bg-surface p-2 text-xs font-bold border-none focus:ring-1 focus:ring-primary"
-                        value={inquiryData.startDate}
-                        onChange={e => setInquiryData({ ...inquiryData, startDate: e.target.value })}
+                        required
+                        type="email"
+                        value={inquiryData.email}
+                        onChange={e => setInquiryData({ ...inquiryData, email: e.target.value })}
+                        className="w-full bg-surface p-3 text-xs font-bold border-none focus:ring-1 focus:ring-primary outline-none"
+                        placeholder="email@priklad.sk"
                       />
                     </div>
+
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase text-outline">Do dátumu</label>
-                      <input
-                        required type="date"
-                        className="w-full bg-surface p-2 text-xs font-bold border-none focus:ring-1 focus:ring-primary"
-                        value={inquiryData.endDate}
-                        onChange={e => setInquiryData({ ...inquiryData, endDate: e.target.value })}
+                      <label className="text-[10px] font-bold uppercase text-outline">Doplňujúca poznámka</label>
+                      <textarea
+                        value={inquiryData.message}
+                        onChange={e => setInquiryData({ ...inquiryData, message: e.target.value })}
+                        className="w-full bg-surface p-3 text-xs font-medium border-none focus:ring-1 focus:ring-primary outline-none min-h-[60px] resize-none"
+                        placeholder="Napr. približný čas prevzatia stroja..."
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-outline">Poznámka / Špecifikácia</label>
-                  <textarea
-                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-xs font-medium min-h-[80px]"
-                    placeholder="Miesto dodania, špeciálne požiadavky..."
-                    value={inquiryData.message || ''}
-                    onChange={e => setInquiryData({ ...inquiryData, message: e.target.value })}
-                  />
-                </div>
+                  {/* Calculations & Pricing summary */}
+                  <div className="bg-[#fdfdf7] p-5 border border-primary/20 space-y-3 mt-6">
+                    <div className="flex justify-between text-xs text-on-surface-variant font-medium">
+                      <span>Nájomné ({durationMode === '4h' ? 'Do 4 hod' : `${cost.daysCount} dní`}):</span>
+                      <span className="font-bold text-on-surface">{cost.rentCost.toFixed(2)} €</span>
+                    </div>
+                    {cost.accCost > 0 && (
+                      <div className="flex justify-between text-xs text-on-surface-variant font-medium">
+                        <span>Príslušenstvo / Spotrebný materiál:</span>
+                        <span className="font-bold text-on-surface">{cost.accCost.toFixed(2)} €</span>
+                      </div>
+                    )}
+                    {cost.discount > 0 && (
+                      <div className="flex justify-between text-xs text-emerald-600 font-bold">
+                        <span>Dlhodobá zľava ({cost.discount}%):</span>
+                        <span>-{(cost.rentCost * (cost.discount / 90)).toFixed(2)} €</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs text-on-surface-variant font-medium pt-2 border-t border-outline/5">
+                      <span>Vratná záloha (kaucia):</span>
+                      <span className="font-black text-on-surface">{selectedForBooking.deposit} €</span>
+                    </div>
+                    <div className="flex justify-between items-baseline pt-2 border-t-2 border-primary/20">
+                      <span className="text-xs font-black uppercase">Predbežná cena spolu:</span>
+                      <span className="text-2xl font-black text-primary-strong">
+                        {cost.total.toFixed(2)} €
+                      </span>
+                    </div>
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={sending}
-                  className="w-full bg-primary text-on-primary py-5 font-black uppercase tracking-[0.2em] hover:bg-[#daf900] transition-all disabled:opacity-50 shadow-xl active:scale-[0.98]"
-                >
-                  {sending ? 'ODOSIELAM...' : 'POTVRDIŤ ZÁUJEM O PRENÁJOM'}
-                </button>
-                <p className="text-[8px] text-center font-bold uppercase opacity-40 leading-relaxed">
-                  Odoslaním dopytu súhlasíte so spracovaním osobných údajov.<br />Naši pracovníci vás budú kontaktovať pre overenie dostupnosti.
-                </p>
-              </form>
+                  <button
+                    type="submit"
+                    disabled={sending}
+                    className="w-full bg-[#2d2f2b] text-primary py-5 font-black uppercase tracking-[0.2em] text-xs hover:bg-primary hover:text-on-primary transition-all disabled:opacity-50 active:scale-[0.98] mt-4"
+                  >
+                    {sending ? 'ODOSIELAM...' : 'Potvrdiť rezerváciu prenájmu'}
+                  </button>
+                </form>
+              </div>
+
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

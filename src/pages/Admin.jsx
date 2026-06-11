@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+import { useSettings } from '../context/SettingsContext'
 import { 
   Plus, Edit, Trash2, Package, Truck, MessageSquare, 
   LogOut, LayoutDashboard, Settings, Search, Filter, 
-  ChevronRight, AlertCircle, CheckCircle2, X, Eye, Menu, PlusCircle
+  ChevronRight, AlertCircle, CheckCircle2, X, Eye, Menu, PlusCircle,
+  Upload, Image, Loader2, Calendar, Wrench, Sliders
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { cn } from '../lib/utils'
+import { cn, compressImage } from '../lib/utils'
+import { toast } from 'react-hot-toast'
 
 const Admin = () => {
-  const [session, setSession] = useState(null)
+  const { session } = useAuth()
+  const { settings, refreshSettings } = useSettings()
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState('dashboard')
   const [data, setData] = useState([])
@@ -24,6 +29,22 @@ const Admin = () => {
   const [showOrderDetails, setShowOrderDetails] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [editingItem, setEditingItem] = useState(null)
+  const [imageUploading, setImageUploading] = useState(false)
+  const [shippingConfig, setShippingConfig] = useState(null)
+  const [showRentalModal, setShowRentalModal] = useState(false)
+  const [editingRental, setEditingRental] = useState(null)
+  const [rentalFormData, setRentalFormData] = useState({
+    name: '',
+    category: 'Vibračná a hutniaca technika',
+    price4h: 0,
+    price24h: 0,
+    deposit: 100,
+    description: '',
+    note: '',
+    image_url: '',
+    accessories: [],
+    availability: true
+  })
 
   const [formData, setFormData] = useState({
     name: '',
@@ -33,14 +54,9 @@ const Admin = () => {
     stock_quantity: 0,
     category: '',
     image_url: '',
-    type: 'material'
+    type: 'material',
+    unit: 'ks'
   })
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session))
-    return () => subscription.unsubscribe()
-  }, [])
 
   useEffect(() => {
     if (session) {
@@ -48,6 +64,19 @@ const Admin = () => {
        if (view === 'dashboard') fetchStats()
     }
   }, [session, view])
+
+  useEffect(() => {
+    if (view === 'shipping' && settings.shipping_config) {
+      try {
+        const parsed = typeof settings.shipping_config === 'string'
+          ? JSON.parse(settings.shipping_config)
+          : settings.shipping_config
+        setShippingConfig(parsed)
+      } catch (e) {
+        console.error('Failed to parse shipping config:', e)
+      }
+    }
+  }, [view, settings.shipping_config])
 
   const fetchStats = async () => {
     const { count: p } = await supabase.from('products').select('*', { count: 'exact', head: true })
@@ -64,17 +93,29 @@ const Admin = () => {
 
   const fetchData = async () => {
     setLoading(true)
-    if (view === 'dashboard') {
+    if (view === 'dashboard' || view === 'shipping') {
       setLoading(false)
       return
     }
     
-    // Updated table logic to include categories
-    const table = view === 'products' ? 'products' : 
-                 view === 'orders' ? 'orders' : 
-                 view === 'categories' ? 'categories' : 'inquiries'
-                 
-    const query = supabase.from(table).select('*').order('created_at', { ascending: false })
+    // Updated table logic to include categories & rentals
+    let query;
+    if (view === 'bookings') {
+      query = supabase
+        .from('rental_bookings')
+        .select('*, rental_items(name)')
+        .order('created_at', { ascending: false })
+    } else if (view === 'rentals') {
+      query = supabase
+        .from('rental_items')
+        .select('*')
+        .order('name', { ascending: true })
+    } else {
+      const table = view === 'products' ? 'products' : 
+                   view === 'orders' ? 'orders' : 
+                   view === 'categories' ? 'categories' : 'inquiries'
+      query = supabase.from(table).select('*').order('created_at', { ascending: false })
+    }
     
     const { data, error } = await query
     if (error) console.error(error)
@@ -82,6 +123,54 @@ const Admin = () => {
     
     if (view === 'products') fetchCategories()
     setLoading(false)
+  }
+
+  const handleImageUpload = async (e, type = 'product') => {
+    const rawFile = e.target.files?.[0]
+    if (!rawFile) return
+
+    setImageUploading(true)
+    const uploadToastId = toast.loading('Komprimujem a nahrávam fotku...')
+
+    try {
+      const file = await compressImage(rawFile, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 })
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.webp`
+      const filePath = `${fileName}`
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath)
+
+      if (type === 'rental') {
+        setRentalFormData(prev => ({ ...prev, image_url: publicUrl }))
+      } else {
+        setFormData(prev => ({ ...prev, image_url: publicUrl }))
+      }
+      toast.success('Fotka úspešne nahratá a skomprimovaná!', { id: uploadToastId })
+    } catch (error) {
+      console.error('Chyba pri nahrávaní obrázka:', error.message)
+      toast.error(`Nepodarilo sa nahrať fotku: ${error.message}`, { id: uploadToastId })
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
+  const handleRemoveImage = (type = 'product') => {
+    if (type === 'rental') {
+      setRentalFormData(prev => ({ ...prev, image_url: '' }))
+    } else {
+      setFormData(prev => ({ ...prev, image_url: '' }))
+    }
+    toast.success('Fotka bola odstránená.')
   }
 
   const handleSaveCategory = async (e) => {
@@ -92,8 +181,7 @@ const Admin = () => {
       
       if (error) {
         if (error.code === '23505') { // Unique constraint violation
-          alert('Táto kategória už existuje. Skúste ju vyhľadať v zozname (overte aj správny Typ produktu).')
-          // Optionally try to fetch the existing one to select it
+          toast.error('Táto kategória už existuje. Skúste ju vyhľadať v zozname.')
           const { data: existing } = await supabase.from('categories').select('*').eq('name', categoryFormData.name).single()
           if (existing) setFormData(prev => ({ ...prev, category: existing.name }))
         } else {
@@ -101,13 +189,14 @@ const Admin = () => {
         }
       } else if (data) {
         setFormData(prev => ({ ...prev, category: data.name }))
+        toast.success('Kategória bola úspešne vytvorená!')
       }
       
       setShowCategoryModal(false)
       await fetchCategories()
       if (view === 'categories') fetchData()
     } catch (err) {
-      alert('Chyba: ' + err.message)
+      toast.error('Chyba: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -120,14 +209,58 @@ const Admin = () => {
       if (editingItem) {
         const { error } = await supabase.from('products').update(formData).match({ id: editingItem.id })
         if (error) throw error
+        toast.success('Produkt bol úspešne upravený!')
       } else {
         const { error } = await supabase.from('products').insert([formData])
         if (error) throw error
+        toast.success('Produkt bol úspešne pridaný!')
       }
       setShowModal(false)
       fetchData()
     } catch (err) {
-      alert(err.message)
+      toast.error('Chyba: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveRental = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      if (editingRental) {
+        const { error } = await supabase.from('rental_items').update(rentalFormData).match({ id: editingRental.id })
+        if (error) throw error
+        toast.success('Položka požičovne bola úspešne upravená!')
+      } else {
+        const { error } = await supabase.from('rental_items').insert([rentalFormData])
+        if (error) throw error
+        toast.success('Položka požičovne bola úspešne pridaná!')
+      }
+      setShowRentalModal(false)
+      fetchData()
+    } catch (err) {
+      toast.error('Chyba: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveShippingConfig = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert({
+          key: 'shipping_config',
+          value: JSON.stringify(shippingConfig)
+        })
+      if (error) throw error
+      toast.success('Cenník dopravy bol úspešne uložený!')
+      await refreshSettings()
+    } catch (err) {
+      toast.error('Chyba pri ukladaní cenníka: ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -137,7 +270,13 @@ const Admin = () => {
     try {
       const { data, error } = await supabase
         .from('order_items')
-        .select('*')
+        .select(`
+          *,
+          products (
+            name,
+            unit
+          )
+        `)
         .eq('order_id', order.id)
       
       if (error) throw error
@@ -150,9 +289,35 @@ const Admin = () => {
 
   const handleDelete = async (id) => {
     if (!confirm('Naozaj vymazať?')) return
-    const table = view === 'products' ? 'products' : view === 'orders' ? 'orders' : 'inquiries'
-    await supabase.from(table).delete().match({ id })
-    fetchData()
+    const table = view === 'products' ? 'products' : 
+                  view === 'orders' ? 'orders' : 
+                  view === 'bookings' ? 'rental_bookings' : 
+                  view === 'rentals' ? 'rental_items' : 'inquiries'
+    const { error } = await supabase.from(table).delete().match({ id })
+    if (error) {
+      toast.error('Chyba pri mazaní: ' + error.message)
+    } else {
+      toast.success('Položka bola úspešne vymazaná.')
+      fetchData()
+    }
+  }
+
+  const handleUpdateBookingStatus = async (id, status) => {
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('rental_bookings')
+        .update({ status })
+        .match({ id })
+
+      if (error) throw error
+      toast.success(status === 'approved' ? 'Rezervácia bola schválená!' : 'Rezervácia bola zamietnutá.')
+      fetchData()
+    } catch (err) {
+      toast.error('Chyba: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleImportFromUrl = async (url) => {
@@ -193,7 +358,20 @@ const Admin = () => {
     }
   }
 
-  if (!session) return <LoginComponent setSession={setSession} />
+  const filteredData = data.filter(item => {
+    const searchLower = searchTerm.toLowerCase();
+    if (view === 'orders' && item.shipping_info) {
+      const fullName = `${item.shipping_info.firstName || ''} ${item.shipping_info.lastName || ''}`;
+      return fullName.toLowerCase().includes(searchLower) || item.id.toLowerCase().includes(searchLower);
+    }
+    if (view === 'bookings') {
+      return (item.customer_name || '').toLowerCase().includes(searchLower) || 
+             (item.rental_items?.name || '').toLowerCase().includes(searchLower);
+    }
+    return (item.name || item.id || '').toLowerCase().includes(searchLower);
+  });
+
+  if (!session) return <LoginComponent />
 
   return (
     <div className="flex flex-col md:flex-row pt-20 min-h-screen bg-[#f7f7f0]">
@@ -222,7 +400,10 @@ const Admin = () => {
           <NavItem icon={<Filter size={18}/>} label="Kategórie" active={view === 'categories'} onClick={() => { setView('categories'); setIsSidebarOpen(false); }} />
           <NavItem icon={<Truck size={18}/>} label="Objednávky" active={view === 'orders'} onClick={() => { setView('orders'); setIsSidebarOpen(false); }} />
           <NavItem icon={<MessageSquare size={18}/>} label="Zákaznícke dopyty" active={view === 'inquiries'} onClick={() => { setView('inquiries'); setIsSidebarOpen(false); }} />
+          <NavItem icon={<Calendar size={18}/>} label="Rezervácie techniky" active={view === 'bookings'} onClick={() => { setView('bookings'); setIsSidebarOpen(false); }} />
+          <NavItem icon={<Wrench size={18}/>} label="Správa Požičovne" active={view === 'rentals'} onClick={() => { setView('rentals'); setIsSidebarOpen(false); }} />
           <div className="pt-8 pb-4 px-4 text-[10px] font-bold uppercase text-outline tracking-wider">Nastavenia</div>
+          <NavItem icon={<Sliders size={18}/>} label="Cenník Dopravy" active={view === 'shipping'} onClick={() => { setView('shipping'); setIsSidebarOpen(false); }} />
           <NavItem icon={<Settings size={18}/>} label="Systém" active={view === 'settings'} onClick={() => { setView('settings'); setIsSidebarOpen(false); }} />
         </nav>
 
@@ -238,7 +419,15 @@ const Admin = () => {
         <header className="flex justify-between items-end mb-12">
           <div>
             <h1 className="text-4xl font-black tracking-tight capitalize">
-              {view === 'products' ? 'Správa Inventára' : view === 'orders' ? 'Objednávky' : view === 'dashboard' ? 'Prehľad' : view}
+              {view === 'products' ? 'Správa Inventára' : 
+               view === 'orders' ? 'Objednávky' : 
+               view === 'rentals' ? 'Správa Požičovne' :
+               view === 'shipping' ? 'Cenník Dopravy' :
+               view === 'categories' ? 'Kategórie' :
+               view === 'bookings' ? 'Rezervácie Techniky' :
+               view === 'inquiries' ? 'Zákaznícke Dopyty' :
+               view === 'settings' ? 'Systémové Nastavenia' :
+               view === 'dashboard' ? 'Prehľad' : view}
             </h1>
           </div>
           {view === 'products' && (
@@ -254,12 +443,35 @@ const Admin = () => {
                 <PlusCircle size={16} /> {loading ? 'Spracúvam...' : 'Import z URL'}
               </button>
               <button 
-                onClick={() => { setEditingItem(null); setFormData({name:'', description:'', price:0, sku:'', stock_quantity:0, category:'', image_url:'', type: 'material'}); setShowModal(true); }}
+                onClick={() => { setEditingItem(null); setFormData({name:'', description:'', price:0, sku:'', stock_quantity:0, category:'', image_url:'', type: 'material', unit: 'ks'}); setShowModal(true); }}
                 className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
               >
                 <Plus size={16} /> Pridať produkt
               </button>
             </div>
+          )}
+          {view === 'rentals' && (
+            <button 
+              onClick={() => {
+                setEditingRental(null);
+                setRentalFormData({
+                  name: '',
+                  category: 'Vibračná a hutniaca technika',
+                  price4h: 0,
+                  price24h: 0,
+                  deposit: 100,
+                  description: '',
+                  note: '',
+                  image_url: '',
+                  accessories: [],
+                  availability: true
+                });
+                setShowRentalModal(true);
+              }}
+              className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
+            >
+              <Plus size={16} /> Pridať techniku
+            </button>
           )}
           {view === 'categories' && (
             <button 
@@ -273,7 +485,7 @@ const Admin = () => {
 
         {view === 'dashboard' && <DashboardStats stats={stats} />}
         
-        {view !== 'dashboard' && (
+        {view !== 'dashboard' && view !== 'shipping' && (
           <div className="bg-white border border-outline/10 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-outline/10 flex gap-4">
                <div className="relative flex-1">
@@ -288,74 +500,559 @@ const Admin = () => {
                <button className="flex items-center gap-2 px-4 py-2 border border-outline/20 text-xs font-bold uppercase"><Filter size={14}/> Filtre</button>
             </div>
             
-            <table className="w-full text-left">
-              <thead className="bg-[#f0eded]">
-                <tr>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Položka</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Status / Detaily</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Hodnota / Sklad</th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Akcie</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline/5">
-                {loading ? (
-                  <tr><td colSpan={4} className="p-20 text-center font-bold text-outline animate-pulse">NAČÍTAVAM...</td></tr>
-                ) : data.filter(item => (item.name || item.id).toLowerCase().includes(searchTerm.toLowerCase())).map((item) => (
-                  <tr key={item.id} className="hover:bg-surface transition-colors group">
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-4">
-                        {item.image_url && <img src={item.image_url} className="w-10 h-10 object-cover bg-surface" />}
-                        <div>
-                          <p className="font-bold text-sm">{item.name || item.id.slice(0,8)}</p>
-                          <p className="text-[10px] text-outline font-mono uppercase">{item.sku || 'No SKU'}</p>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-[#f0eded]">
+                  {view === 'products' && (
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Položka</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Kategória</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Cena / Sklad</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Akcie</th>
+                    </tr>
+                  )}
+                  {view === 'categories' && (
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Názov kategórie</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Typ kategórie</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Dátum vytvorenia</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Akcie</th>
+                    </tr>
+                  )}
+                  {view === 'orders' && (
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Zákazník</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Kontaktné údaje</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Celková suma</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Stav / Akcie</th>
+                    </tr>
+                  )}
+                  {view === 'inquiries' && (
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Odosielateľ</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Kontakt</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Správa / Otázka</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Akcie</th>
+                    </tr>
+                  )}
+                  {view === 'bookings' && (
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Zákazník</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Kontakt</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Prenajatá technika</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Obdobie prenájmu</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Stav</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Akcie</th>
+                    </tr>
+                  )}
+                  {view === 'rentals' && (
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Technika</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Kategória</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Ceny (4h / 24h)</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Záloha</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Akcie</th>
+                    </tr>
+                  )}
+                </thead>
+                <tbody className="divide-y divide-outline/5">
+                  {loading ? (
+                    <tr><td colSpan={view === 'bookings' ? 6 : view === 'rentals' ? 5 : 4} className="p-20 text-center font-bold text-outline animate-pulse">NAČÍTAVAM...</td></tr>
+                  ) : filteredData.length === 0 ? (
+                    <tr>
+                      <td colSpan={view === 'bookings' ? 6 : view === 'rentals' ? 5 : 4} className="p-12 text-center text-outline text-xs uppercase font-bold">
+                        Žiadne výsledky sa nenašli
+                        {view === 'bookings' && (
+                          <p className="text-[10px] text-amber-600 mt-2 normal-case font-medium">
+                            Tip: Ak sa zoznam rezervácií nezobrazuje, uistite sa, že ste v Supabase spustili SQL skript "rental_setup.sql".
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  ) : filteredData.map((item) => (
+                    <tr key={item.id} className="hover:bg-surface transition-colors group">
+                      {/* Products View */}
+                      {view === 'products' && (
+                        <>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-4">
+                              {item.image_url && <img src={item.image_url} className="w-10 h-10 object-cover bg-surface" />}
+                              <div>
+                                <p className="font-bold text-sm">{item.name}</p>
+                                <p className="text-[10px] text-outline font-mono uppercase">{item.sku || 'Bez SKU'}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className="text-[10px] bg-surface-container px-2 py-1 uppercase font-bold text-outline">{item.category || 'Materiál'}</span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-4">
+                              <span className="font-black text-sm">{item.price.toFixed(2)} € / {item.unit || 'ks'}</span>
+                              <span className={cn(
+                                "text-[10px] font-bold px-2 py-0.5 uppercase",
+                                item.stock_quantity < 5 ? "bg-error/10 text-error" : "bg-emerald-100 text-emerald-700"
+                              )}>
+                                 {item.stock_quantity} {item.unit || 'ks'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true); }}
+                                className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
+                              ><Edit size={16}/></button>
+                              <button 
+                                onClick={() => handleDelete(item.id)}
+                                className="p-2 hover:bg-error/10 text-error transition-colors"
+                              ><Trash2 size={16}/></button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {/* Categories View */}
+                      {view === 'categories' && (
+                        <>
+                          <td className="px-6 py-5">
+                            <p className="font-bold text-sm">{item.name}</p>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className="text-[10px] bg-surface-container px-2 py-1 uppercase font-bold text-outline">
+                              {item.type === 'material' ? 'Materiál' : item.type === 'tool' ? 'Náradie' : 'Požičovňa'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-xs text-outline font-mono">
+                            {new Date(item.created_at).toLocaleDateString('sk-SK')}
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => handleDelete(item.id)}
+                                className="p-2 hover:bg-error/10 text-error transition-colors"
+                              ><Trash2 size={16}/></button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {/* Orders View */}
+                      {view === 'orders' && (
+                        <>
+                          <td className="px-6 py-5">
+                            <p className="font-bold text-sm">{item.shipping_info?.firstName} {item.shipping_info?.lastName}</p>
+                            <p className="text-[10px] text-outline font-mono">Objednávka #{item.id.slice(0,8)}</p>
+                          </td>
+                          <td className="px-6 py-5 text-xs">
+                            <p className="font-medium">{item.shipping_info?.phone}</p>
+                            <a href={`mailto:${item.shipping_info?.email}`} className="text-primary hover:underline font-bold block mt-0.5">{item.shipping_info?.email}</a>
+                          </td>
+                          <td className="px-6 py-5 font-black text-sm">
+                            {item.total_price.toFixed(2)} €
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex justify-end gap-2 items-center">
+                              <span className="text-[10px] bg-primary/20 text-[#546200] px-2 py-1 uppercase font-bold">{item.status || 'Prijatá'}</span>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                  onClick={() => handleViewOrder(item)}
+                                  className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
+                                  title="Zobraziť detaily"
+                                ><Eye size={16}/></button>
+                                <button 
+                                  onClick={() => handleDelete(item.id)}
+                                  className="p-2 hover:bg-error/10 text-error transition-colors"
+                                ><Trash2 size={16}/></button>
+                              </div>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {/* Inquiries View */}
+                      {view === 'inquiries' && (
+                        <>
+                          <td className="px-6 py-5">
+                            <p className="font-bold text-sm">{item.name}</p>
+                            <p className="text-[10px] text-outline font-mono">{new Date(item.created_at).toLocaleString('sk-SK')}</p>
+                          </td>
+                          <td className="px-6 py-5 text-xs">
+                            <a href={`mailto:${item.email}`} className="text-primary hover:underline font-bold block">{item.email}</a>
+                          </td>
+                          <td className="px-6 py-5 text-xs text-on-surface-variant font-medium whitespace-pre-wrap max-w-sm">
+                            {item.message}
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <a 
+                                href={`mailto:${item.email}`}
+                                className="p-2 hover:bg-primary/20 text-on-surface transition-colors inline-block text-center"
+                                title="Odpovedať"
+                              ><Eye size={16}/></a>
+                              <button 
+                                onClick={() => handleDelete(item.id)}
+                                className="p-2 hover:bg-error/10 text-error transition-colors"
+                              ><Trash2 size={16}/></button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {/* Bookings View */}
+                      {view === 'bookings' && (
+                        <>
+                          <td className="px-6 py-5">
+                            <p className="font-bold text-sm">{item.customer_name}</p>
+                            <p className="text-[10px] text-outline font-mono mt-0.5">Vytvorené: {new Date(item.created_at).toLocaleDateString('sk-SK')}</p>
+                          </td>
+                          <td className="px-6 py-5 text-xs">
+                            <p className="font-medium">{item.customer_phone}</p>
+                            <a href={`mailto:${item.customer_email}`} className="text-primary hover:underline font-bold block mt-0.5">{item.customer_email}</a>
+                          </td>
+                          <td className="px-6 py-5">
+                            <p className="font-bold text-sm text-primary-strong">{item.rental_items?.name || 'Neznáma technika'}</p>
+                          </td>
+                          <td className="px-6 py-5 text-xs">
+                            <p className="font-bold text-sm">{new Date(item.start_date).toLocaleDateString('sk-SK')} - {new Date(item.end_date).toLocaleDateString('sk-SK')}</p>
+                            {item.note && <p className="text-[10px] italic text-outline mt-1 font-medium whitespace-pre-wrap max-w-[200px]">Poznámka: {item.note}</p>}
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className={cn(
+                              "text-[10px] px-2 py-1 uppercase font-black tracking-wider",
+                              item.status === 'approved' ? "bg-emerald-100 text-emerald-700" :
+                              item.status === 'rejected' ? "bg-error/10 text-error" : "bg-amber-100 text-amber-700"
+                            )}>
+                              {item.status === 'approved' ? 'Schválená' :
+                               item.status === 'rejected' ? 'Zamietnutá' : 'Čaká'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex justify-end gap-2">
+                              {item.status !== 'approved' && (
+                                <button 
+                                  onClick={() => handleUpdateBookingStatus(item.id, 'approved')}
+                                  className="bg-emerald-600 text-white px-3 py-1.5 text-[9px] font-black uppercase tracking-wider hover:bg-emerald-700 transition-colors"
+                                >Schváliť</button>
+                              )}
+                              {item.status !== 'rejected' && (
+                                <button 
+                                  onClick={() => handleUpdateBookingStatus(item.id, 'rejected')}
+                                  className="bg-amber-600 text-white px-3 py-1.5 text-[9px] font-black uppercase tracking-wider hover:bg-amber-700 transition-colors"
+                                >Zamietnuť</button>
+                              )}
+                              <button 
+                                onClick={() => handleDelete(item.id)}
+                                className="text-error hover:bg-error/10 p-1.5 transition-colors"
+                              ><Trash2 size={16}/></button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+
+                      {/* Rentals View */}
+                      {view === 'rentals' && (
+                        <>
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-4">
+                              {(item.image_url || item.imageUrl) && (
+                                <img src={item.image_url || item.imageUrl} className="w-10 h-10 object-cover bg-surface" />
+                              )}
+                              <div>
+                                <p className="font-bold text-sm">{item.name}</p>
+                                <p className="text-[10px] text-outline font-mono truncate max-w-[200px]">
+                                  {item.description ? item.description.slice(0, 50) + '...' : 'Bez popisu'}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className="text-[10px] bg-surface-container px-2 py-1 uppercase font-bold text-outline">
+                              {item.category}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-xs">4h: {item.price4h?.toFixed(2)} €</span>
+                              <span className="font-black text-sm text-primary-strong">24h: {item.price24h?.toFixed(2)} €</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className="font-semibold text-xs text-outline">{item.deposit?.toFixed(2)} €</span>
+                          </td>
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => {
+                                  setEditingRental(item);
+                                  setRentalFormData({
+                                    name: item.name || '',
+                                    category: item.category || 'Vibračná a hutniaca technika',
+                                    price4h: item.price4h || 0,
+                                    price24h: item.price24h || 0,
+                                    deposit: item.deposit || 100,
+                                    description: item.description || '',
+                                    note: item.note || '',
+                                    image_url: item.image_url || item.imageUrl || '',
+                                    accessories: Array.isArray(item.accessories) ? item.accessories : [],
+                                    availability: item.availability !== false
+                                  });
+                                  setShowRentalModal(true);
+                                }}
+                                className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
+                              ><Edit size={16}/></button>
+                              <button 
+                                onClick={() => handleDelete(item.id)}
+                                className="p-2 hover:bg-error/10 text-error transition-colors"
+                              ><Trash2 size={16}/></button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="block md:hidden divide-y divide-outline/10 bg-white">
+              {loading ? (
+                <div className="p-20 text-center font-bold text-outline animate-pulse">NAČÍTAVAM...</div>
+              ) : filteredData.length === 0 ? (
+                <div className="p-12 text-center text-outline text-xs uppercase font-bold">
+                  Žiadne výsledky sa nenašli
+                  {view === 'bookings' && (
+                    <p className="text-[10px] text-amber-600 mt-2 normal-case font-medium">
+                      Tip: Uistite sa, že ste v Supabase spustili skript "rental_setup.sql".
+                    </p>
+                  )}
+                </div>
+              ) : (
+                filteredData.map((item) => (
+                  <div key={item.id} className="p-5 space-y-4 hover:bg-surface transition-colors">
+                    {/* Bookings mobile card */}
+                    {view === 'bookings' && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-base text-on-surface leading-tight">{item.customer_name}</p>
+                            <p className="text-[10px] text-outline font-mono mt-0.5">Rezervácia vytvorená: {new Date(item.created_at).toLocaleDateString('sk-SK')}</p>
+                          </div>
+                          <span className={cn(
+                            "text-[9px] px-2 py-0.5 uppercase font-black tracking-wider shrink-0",
+                            item.status === 'approved' ? "bg-emerald-100 text-emerald-700" :
+                            item.status === 'rejected' ? "bg-error/10 text-error" : "bg-amber-100 text-amber-700"
+                          )}>
+                            {item.status === 'approved' ? 'Schválená' :
+                             item.status === 'rejected' ? 'Zamietnutá' : 'Čaká'}
+                          </span>
+                        </div>
+
+                        <div className="bg-surface p-3 text-xs border border-outline/5 space-y-2">
+                          <p className="font-bold text-primary-strong text-sm">{item.rental_items?.name || 'Neznáma technika'}</p>
+                          <p className="text-[10px] font-bold text-outline uppercase tracking-wider">
+                            Obdobie: {new Date(item.start_date).toLocaleDateString('sk-SK')} - {new Date(item.end_date).toLocaleDateString('sk-SK')}
+                          </p>
+                          <div className="pt-1 border-t border-outline/5 space-y-0.5">
+                            <p><strong>Tel:</strong> <a href={`tel:${item.customer_phone}`} className="text-primary hover:underline font-bold">{item.customer_phone}</a></p>
+                            <p><strong>E-mail:</strong> <a href={`mailto:${item.customer_email}`} className="text-primary hover:underline font-bold">{item.customer_email}</a></p>
+                          </div>
+                          {item.note && <p className="text-[10px] italic text-outline mt-1 font-medium whitespace-pre-wrap">Poznámka: {item.note}</p>}
+                        </div>
+
+                        <div className="flex gap-2 pt-1">
+                          {item.status !== 'approved' && (
+                            <button 
+                              onClick={() => handleUpdateBookingStatus(item.id, 'approved')}
+                              className="flex-1 bg-emerald-600 text-white py-3 font-bold uppercase text-xs active:scale-95 transition-transform"
+                            >Schváliť</button>
+                          )}
+                          {item.status !== 'rejected' && (
+                            <button 
+                              onClick={() => handleUpdateBookingStatus(item.id, 'rejected')}
+                              className="flex-1 bg-amber-600 text-white py-3 font-bold uppercase text-xs active:scale-95 transition-transform"
+                            >Zamietnuť</button>
+                          )}
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="bg-error/10 text-error p-3 font-bold uppercase text-xs active:scale-95 transition-transform"
+                          ><Trash2 size={16}/></button>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      {view === 'products' ? (
-                        <span className="text-[10px] bg-surface-container px-2 py-1 uppercase font-bold text-outline">{item.category || 'Materiál'}</span>
-                      ) : (
-                        <span className="text-[10px] bg-primary/20 text-[#546200] px-2 py-1 uppercase font-bold">{item.status || 'Doručené'}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-4">
-                        <span className="font-black text-sm">{item.price || item.total_price || 0} €</span>
-                        {item.stock_quantity !== undefined && (
-                          <span className={cn(
-                            "text-[10px] font-bold px-2 py-0.5 uppercase",
-                            item.stock_quantity < 5 ? "bg-error/10 text-error" : "bg-emerald-100 text-emerald-700"
-                          )}>
-                             {item.stock_quantity} ks
+                    )}
+
+                    {/* Rentals mobile card */}
+                    {view === 'rentals' && (
+                      <>
+                        <div className="flex items-start gap-4">
+                          {(item.image_url || item.imageUrl) && (
+                            <img src={item.image_url || item.imageUrl} className="w-16 h-16 object-cover border border-outline/10 bg-surface shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-base text-on-surface leading-tight break-words">{item.name}</p>
+                            <span className="inline-block text-[9px] bg-surface-container px-2 py-0.5 font-black text-outline uppercase mt-1">
+                              {item.category}
+                            </span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="block font-black text-sm text-primary-strong">24h: {item.price24h?.toFixed(2)} €</span>
+                            <span className="block text-xs text-outline mt-0.5">4h: {item.price4h?.toFixed(2)} €</span>
+                          </div>
+                        </div>
+                        <div className="bg-surface p-3 text-[10px] font-semibold space-y-1">
+                          <p><strong className="uppercase text-outline text-[9px]">Záloha:</strong> {item.deposit?.toFixed(2)} €</p>
+                          {item.accessories?.length > 0 && (
+                            <p><strong className="uppercase text-outline text-[9px]">Príslušenstvo:</strong> {item.accessories.length} ks</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button 
+                            onClick={() => {
+                              setEditingRental(item);
+                              setRentalFormData({
+                                name: item.name || '',
+                                category: item.category || 'Vibračná a hutniaca technika',
+                                price4h: item.price4h || 0,
+                                price24h: item.price24h || 0,
+                                deposit: item.deposit || 100,
+                                description: item.description || '',
+                                note: item.note || '',
+                                image_url: item.image_url || item.imageUrl || '',
+                                accessories: Array.isArray(item.accessories) ? item.accessories : [],
+                                availability: item.availability !== false
+                              });
+                              setShowRentalModal(true);
+                            }}
+                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                          ><Edit size={16}/> Upraviť</button>
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="flex-1 bg-error/10 text-error py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                          ><Trash2 size={16}/> Odstrániť</button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Products mobile card */}
+                    {view === 'products' && (
+                      <>
+                        <div className="flex items-start gap-4">
+                          {item.image_url && (
+                            <img src={item.image_url} className="w-16 h-16 object-cover border border-outline/10 bg-surface shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-base text-on-surface leading-tight break-words">{item.name}</p>
+                            <p className="text-[10px] text-outline font-mono uppercase mt-1">{item.sku || 'Bez SKU'}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="block font-black text-base text-on-surface">{item.price.toFixed(2)} € / {item.unit || 'ks'}</span>
+                            <span className={cn(
+                              "inline-block text-[9px] font-black px-2 py-0.5 uppercase mt-1",
+                              item.stock_quantity < 5 ? "bg-error/10 text-error" : "bg-emerald-100 text-emerald-700"
+                            )}>{item.stock_quantity} {item.unit || 'ks'}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center bg-surface p-3 text-[10px] font-bold uppercase tracking-wider">
+                          <span className="text-outline">Kategória:</span>
+                          <span className="bg-surface-container px-2 py-0.5 font-black text-outline">{item.category || 'Materiál'}</span>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button 
+                            onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true); }}
+                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                          ><Edit size={16}/> Upraviť</button>
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="bg-error/10 text-error py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                          ><Trash2 size={16}/> Odstrániť</button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Categories mobile card */}
+                    {view === 'categories' && (
+                      <>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-base text-on-surface leading-tight">{item.name}</p>
+                            <p className="text-[10px] text-outline font-mono mt-1">Vytvorené: {new Date(item.created_at).toLocaleDateString('sk-SK')}</p>
+                          </div>
+                          <span className="text-[9px] bg-surface-container px-2 py-1 uppercase font-black tracking-wider text-outline shrink-0">
+                            {item.type === 'material' ? 'Materiál' : item.type === 'tool' ? 'Náradie' : 'Požičovňa'}
                           </span>
-                        )}
-                      </div>
-                    </td>
-                     <td className="px-6 py-5 text-right">
-                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         {view === 'orders' && (
-                           <button 
-                             onClick={() => handleViewOrder(item)}
-                             className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
-                             title="Zobraziť detaily"
-                           ><Eye size={16}/></button>
-                         )}
-                         {view === 'products' && (
-                           <button 
-                             onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true); }}
-                             className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
-                           ><Edit size={16}/></button>
-                         )}
-                         <button 
-                           onClick={() => handleDelete(item.id)}
-                           className="p-2 hover:bg-error/10 text-error transition-colors"
-                         ><Trash2 size={16}/></button>
-                       </div>
-                     </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        </div>
+                        <div className="pt-2 border-t border-outline/5">
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="w-full bg-error/10 text-error py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                          ><Trash2 size={16}/> Odstrániť</button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Orders mobile card */}
+                    {view === 'orders' && (
+                      <>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-base text-on-surface leading-tight">{item.shipping_info?.firstName} {item.shipping_info?.lastName}</p>
+                            <p className="text-[10px] text-outline font-mono mt-1">Objednávka #{item.id.slice(0,8)}</p>
+                          </div>
+                          <span className="text-[9px] bg-primary/20 text-[#546200] px-2 py-1 uppercase font-black tracking-wider shrink-0">
+                            {item.status || 'Prijatá'}
+                          </span>
+                        </div>
+                        <div className="bg-surface p-3 text-xs border border-outline/5 space-y-1">
+                          <p><strong>Tel:</strong> <a href={`tel:${item.shipping_info?.phone}`} className="text-primary hover:underline font-bold">{item.shipping_info?.phone}</a></p>
+                          <p><strong>E-mail:</strong> <a href={`mailto:${item.shipping_info?.email}`} className="text-primary hover:underline font-bold">{item.shipping_info?.email}</a></p>
+                          <p className="pt-1.5 border-t border-outline/5 text-sm font-black">Celková suma: {item.total_price.toFixed(2)} €</p>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button 
+                            onClick={() => handleViewOrder(item)}
+                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                          ><Eye size={16}/> Detaily</button>
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="flex-1 bg-error/10 text-error py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                          ><Trash2 size={16}/> Odstrániť</button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Inquiries mobile card */}
+                    {view === 'inquiries' && (
+                      <>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-base text-on-surface leading-tight">{item.name}</p>
+                            <p className="text-[10px] text-outline font-mono mt-1">{new Date(item.created_at).toLocaleString('sk-SK')}</p>
+                          </div>
+                          <a href={`mailto:${item.email}`} className="text-[9px] bg-primary/10 text-primary px-2 py-1 uppercase font-black tracking-wider shrink-0 hover:underline">
+                            E-mail
+                          </a>
+                        </div>
+                        <div className="bg-surface p-3 text-xs border border-outline/5 space-y-2 whitespace-pre-wrap font-medium">
+                          {item.message}
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <a 
+                            href={`mailto:${item.email}`}
+                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform text-center inline-block"
+                          ><Eye size={16}/> Odpovedať</a>
+                          <button 
+                            onClick={() => handleDelete(item.id)}
+                            className="flex-1 bg-error/10 text-error py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                          ><Trash2 size={16}/> Odstrániť</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
@@ -364,6 +1061,7 @@ const Admin = () => {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/40 backdrop-blur-sm">
             <div className="bg-white w-full max-w-2xl p-10 shadow-2xl relative">
               <button 
+                type="button"
                 onClick={() => setShowModal(false)}
                 className="absolute top-6 right-6 text-outline hover:text-on-surface transition-colors"
               ><X size={24}/></button>
@@ -398,7 +1096,8 @@ const Admin = () => {
                     onChange={e => setFormData({...formData, type: e.target.value, category: ''})}
                   >
                     <option value="material">Materiál (Stavba)</option>
-                    <option value="tool">Nástroj (Náradie/Farby)</option>
+                    <option value="tool">Náradie (Nástroje)</option>
+                    <option value="agriculture">Poľnohospodársky produkt</option>
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -424,6 +1123,21 @@ const Admin = () => {
                   </div>
                 </div>
                 <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Jednotka predaja</label>
+                  <select 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
+                    value={formData.unit || 'ks'}
+                    onChange={e => setFormData({...formData, unit: e.target.value})}
+                    required
+                  >
+                    <option value="ks">ks (kus)</option>
+                    <option value="balenie">balenie (balenie)</option>
+                    <option value="kg">kg (kilogram)</option>
+                    <option value="m²">m² (štvorcový meter)</option>
+                    <option value="100 ks">100 ks (balenie 100 ks)</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-outline">Cena (€)</label>
                   <input 
                     type="number" step="0.01"
@@ -444,12 +1158,77 @@ const Admin = () => {
                   />
                 </div>
                 <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-outline">URL obrázka</label>
-                  <input 
-                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary"
-                    value={formData.image_url}
-                    onChange={e => setFormData({...formData, image_url: e.target.value})}
+                  <label className="text-[10px] font-bold uppercase text-outline">Popis produktu</label>
+                  <textarea 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary min-h-[100px] resize-none text-sm font-medium"
+                    value={formData.description || ''}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                    placeholder="Napíšte krátky popis, technické parametre alebo informácie o výrobku..."
                   />
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <label className="text-[10px] font-bold uppercase text-outline block">Obrázok produktu</label>
+                  
+                  {formData.image_url ? (
+                    <div className="relative border border-outline/10 p-4 bg-surface flex flex-col sm:flex-row items-center gap-4">
+                      <img 
+                        src={formData.image_url} 
+                        alt="Náhľad produktu" 
+                        className="w-24 h-24 object-cover border border-outline/10 bg-white"
+                      />
+                      <div className="flex-1 text-center sm:text-left space-y-2">
+                        <p className="text-xs text-outline font-mono truncate max-w-xs sm:max-w-md">
+                          {formData.image_url}
+                        </p>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                          <label className="bg-white border border-outline/20 text-on-surface px-4 py-2 text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-surface-container-low transition-colors flex items-center gap-1.5">
+                            <Upload size={12} /> Zmeniť fotku
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={handleImageUpload} 
+                              disabled={imageUploading}
+                            />
+                          </label>
+                          <button 
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="bg-error/10 text-error px-4 py-2 text-[10px] font-bold uppercase tracking-wider hover:bg-error/20 transition-colors"
+                          >
+                            Odstrániť
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className={cn(
+                      "border-2 border-dashed border-outline/20 p-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all text-center",
+                      imageUploading && "pointer-events-none opacity-60"
+                    )}>
+                      {imageUploading ? (
+                        <>
+                          <Loader2 size={32} className="text-primary animate-spin" />
+                          <span className="text-xs font-bold uppercase text-outline font-sans">Nahrávam fotku na server...</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="bg-surface p-4 rounded-full text-outline/60">
+                            <Upload size={24} />
+                          </div>
+                          <span className="text-xs font-bold uppercase text-on-surface font-sans">Kliknite pre výber fotky</span>
+                          <span className="text-[10px] text-outline font-sans">PNG, JPG, WEBP (max. 5MB)</span>
+                        </>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleImageUpload} 
+                        disabled={imageUploading}
+                      />
+                    </label>
+                  )}
                 </div>
                 <div className="col-span-2 pt-4">
                   <button 
@@ -492,14 +1271,61 @@ const Admin = () => {
                 <div className="grid grid-cols-2 gap-12 mb-10 border-y border-outline/5 py-8">
                   <div>
                     <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Zákazník</h4>
-                    <p className="font-bold text-lg">{selectedOrder.customer_name}</p>
-                    <p className="text-on-surface-variant">{selectedOrder.customer_email}</p>
-                    <p className="text-on-surface-variant">{selectedOrder.customer_phone}</p>
+                    <p className="font-bold text-lg">
+                      {selectedOrder.shipping_info?.firstName || ''} {selectedOrder.shipping_info?.lastName || ''}
+                    </p>
+                    <p className="text-on-surface-variant">
+                      <a href={`mailto:${selectedOrder.shipping_info?.email}`} className="text-primary hover:underline font-bold">
+                        {selectedOrder.shipping_info?.email || ''}
+                      </a>
+                    </p>
+                    <p className="text-on-surface-variant">
+                      <a href={`tel:${selectedOrder.shipping_info?.phone}`} className="text-on-surface hover:text-primary transition-colors">
+                        {selectedOrder.shipping_info?.phone || ''}
+                      </a>
+                    </p>
                   </div>
                   <div>
                     <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Doručovacia adresa</h4>
-                    <p className="text-on-surface-variant whitespace-pre-wrap">{selectedOrder.customer_address}</p>
+                    <p className="text-on-surface-variant whitespace-pre-wrap">
+                      {selectedOrder.shipping_info?.address || ''}{'\n'}
+                      {selectedOrder.shipping_info?.zip || ''} {selectedOrder.shipping_info?.city || ''}
+                    </p>
                   </div>
+                </div>
+
+                {/* Shipping Details */}
+                <div className="mb-10 bg-surface p-6 border-l-4 border-primary shadow-sm animate-in fade-in duration-300">
+                  <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Zvolená doprava</h4>
+                  {selectedOrder.shipping_info?.shippingMethod === 'pickup' ? (
+                    <div>
+                      <p className="font-bold text-sm uppercase text-emerald-700">Osobný odber v stavebninách (Ľubeľa)</p>
+                      <p className="text-xs text-outline mt-1">Poplatok: 0.00 €</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-on-surface-variant">
+                      <div className="space-y-1">
+                        <p><strong>Dovoz na adresu:</strong> {selectedOrder.shipping_info?.deliveryMunicipality}</p>
+                        {selectedOrder.shipping_info?.deliveryDistanceKm && (
+                          <p><strong>Vzdialenosť:</strong> {selectedOrder.shipping_info.deliveryDistanceKm} km</p>
+                        )}
+                        <p><strong>Typ vozidla:</strong> {selectedOrder.shipping_info?.deliveryVehicle || 'Nezadané'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        {selectedOrder.shipping_info?.craneUnloading ? (
+                          <p className="text-emerald-700 font-bold">✓ Vykládka hydraulickou rukou ({selectedOrder.shipping_info.palletsCount}x paleta)</p>
+                        ) : (
+                          selectedOrder.shipping_info?.deliveryVehicle === 'Auto s HR 8t' && <p className="text-outline">Bez vykládky HR</p>
+                        )}
+                        {selectedOrder.shipping_info?.waitTime && (
+                          <p className="text-amber-700 font-bold">⏱ Prestoj pri vykládke ({selectedOrder.shipping_info.waitHalfHours * 30} minút)</p>
+                        )}
+                        <p className="text-[11px] text-outline font-black uppercase tracking-wider mt-2">
+                          Cena za prepravu: {Number(selectedOrder.shipping_info?.shippingPrice || 0).toFixed(2)} €
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <h4 className="text-[10px] font-bold text-outline uppercase mb-4 tracking-widest">Položky objednávky</h4>
@@ -511,11 +1337,11 @@ const Admin = () => {
                           {idx + 1}
                         </div>
                         <div>
-                          <p className="font-bold">{item.product_name}</p>
-                          <p className="text-xs text-outline">{item.quantity} ks × {item.unit_price.toFixed(2)} €</p>
+                          <p className="font-bold">{item.products?.name || 'Neznámy produkt'}</p>
+                          <p className="text-xs text-outline">{item.quantity} {item.products?.unit || 'ks'} × {(item.price_at_purchase || 0).toFixed(2)} €</p>
                         </div>
                       </div>
-                      <span className="font-black">{(item.quantity * item.unit_price).toFixed(2)} €</span>
+                      <span className="font-black">{(item.quantity * (item.price_at_purchase || 0)).toFixed(2)} €</span>
                     </div>
                   ))}
                 </div>
@@ -525,6 +1351,480 @@ const Admin = () => {
                   <span className="text-primary-container bg-[#2d2f2b] px-4 py-2">{selectedOrder.total_price.toFixed(2)} €</span>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Shipping Tariff Editor */}
+        {view === 'shipping' && shippingConfig && (
+          <div className="bg-white border border-outline/10 shadow-sm p-8 max-w-4xl">
+            <h2 className="text-2xl font-black mb-8 pb-4 border-b border-outline/10 tracking-tight">
+              NASTAVENIA SADZIEB PREPRAVY
+            </h2>
+            <form onSubmit={handleSaveShippingConfig} className="space-y-8">
+              {/* Kilometer Rates */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-black uppercase tracking-wider text-primary-strong">1. Kilometer sadzby (tam aj späť)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Auto do 3,5t (€ / km)</label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={shippingConfig.rates?.car35 || 0}
+                      onChange={(e) => setShippingConfig({
+                        ...shippingConfig,
+                        rates: { ...shippingConfig.rates, car35: parseFloat(e.target.value) || 0 }
+                      })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Auto s hydraulickou rukou 8t (€ / km)</label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={shippingConfig.rates?.hr8 || 0}
+                      onChange={(e) => setShippingConfig({
+                        ...shippingConfig,
+                        rates: { ...shippingConfig.rates, hr8: parseFloat(e.target.value) || 0 }
+                      })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Extra fees */}
+              <div className="space-y-4 pt-4 border-t border-outline/10">
+                <h3 className="text-sm font-black uppercase tracking-wider text-primary-strong">2. Príplatky a doplnkové poplatky</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Vykládka HR (€ / paleta)</label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={shippingConfig.fees?.crane || 0}
+                      onChange={(e) => setShippingConfig({
+                        ...shippingConfig,
+                        fees: { ...shippingConfig.fees, crane: parseFloat(e.target.value) || 0 }
+                      })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Prestoj 3,5t (€ / 1/2 hod)</label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={shippingConfig.fees?.wait_car35 || 0}
+                      onChange={(e) => setShippingConfig({
+                        ...shippingConfig,
+                        fees: { ...shippingConfig.fees, wait_car35: parseFloat(e.target.value) || 0 }
+                      })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Prestoj HR 8t (€ / 1/2 hod)</label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={shippingConfig.fees?.wait_hr8 || 0}
+                      onChange={(e) => setShippingConfig({
+                        ...shippingConfig,
+                        fees: { ...shippingConfig.fees, wait_hr8: parseFloat(e.target.value) || 0 }
+                      })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Municipalities List */}
+              <div className="space-y-4 pt-4 border-t border-outline/10">
+                <h3 className="text-sm font-black uppercase tracking-wider text-primary-strong">3. Paušálne ceny dovozu pre obce</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-[#f0eded]">
+                        <th className="px-4 py-3 font-bold uppercase text-outline">Obec</th>
+                        <th className="px-4 py-3 font-bold uppercase text-outline">Auto do 3,5t (€)</th>
+                        <th className="px-4 py-3 font-bold uppercase text-outline">Auto s HR 8t (€)</th>
+                        <th className="px-4 py-3 font-bold uppercase text-outline text-right">Akcia</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline/5">
+                      {shippingConfig.municipalities?.map((m, index) => (
+                        <tr key={m.name || index} className="hover:bg-surface">
+                          <td className="px-4 py-3 font-bold">{m.name}</td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="number" step="0.01" min="0"
+                              className="bg-surface p-2 text-xs font-semibold outline-none focus:ring-1 focus:ring-primary w-24"
+                              value={m.car35}
+                              onChange={(e) => {
+                                const updated = [...shippingConfig.municipalities];
+                                updated[index] = { ...m, car35: parseFloat(e.target.value) || 0 };
+                                setShippingConfig({ ...shippingConfig, municipalities: updated });
+                              }}
+                              required
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="number" step="0.01" min="0"
+                              className="bg-surface p-2 text-xs font-semibold outline-none focus:ring-1 focus:ring-primary w-24"
+                              value={m.hr8}
+                              onChange={(e) => {
+                                const updated = [...shippingConfig.municipalities];
+                                updated[index] = { ...m, hr8: parseFloat(e.target.value) || 0 };
+                                setShippingConfig({ ...shippingConfig, municipalities: updated });
+                              }}
+                              required
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = shippingConfig.municipalities.filter((_, idx) => idx !== index);
+                                setShippingConfig({ ...shippingConfig, municipalities: updated });
+                              }}
+                              className="text-error hover:bg-error/10 p-1.5"
+                            >
+                              <Trash2 size={14}/>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Add new municipality form */}
+                <div className="bg-surface p-4 border border-outline/10 space-y-3 mt-4">
+                  <span className="block text-[10px] font-black uppercase text-outline tracking-wider">Pridať novú obec do cenníka</span>
+                  <div className="flex flex-col sm:flex-row gap-4 items-end">
+                    <div className="flex-1 space-y-1 w-full">
+                      <label className="text-[9px] font-bold uppercase text-outline block">Názov obce</label>
+                      <input
+                        id="new-mun-name"
+                        type="text"
+                        placeholder="Napr. Lazisko"
+                        className="w-full bg-white p-3 text-xs font-semibold outline-none border border-outline/20"
+                      />
+                    </div>
+                    <div className="space-y-1 w-full sm:w-auto">
+                      <label className="text-[9px] font-bold uppercase text-outline block">Auto do 3,5t (€)</label>
+                      <input
+                        id="new-mun-car35"
+                        type="number" step="0.01" min="0" placeholder="0.00"
+                        className="w-full sm:w-28 bg-white p-3 text-xs font-bold outline-none border border-outline/20 text-center"
+                      />
+                    </div>
+                    <div className="space-y-1 w-full sm:w-auto">
+                      <label className="text-[9px] font-bold uppercase text-outline block">Auto s HR 8t (€)</label>
+                      <input
+                        id="new-mun-hr8"
+                        type="number" step="0.01" min="0" placeholder="0.00"
+                        className="w-full sm:w-28 bg-white p-3 text-xs font-bold outline-none border border-outline/20 text-center"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nameEl = document.getElementById('new-mun-name');
+                        const carEl = document.getElementById('new-mun-car35');
+                        const hrEl = document.getElementById('new-mun-hr8');
+                        const name = nameEl?.value?.trim();
+                        const car35 = parseFloat(carEl?.value) || 0;
+                        const hr8 = parseFloat(hrEl?.value) || 0;
+                        
+                        if (!name) {
+                          toast.error('Zadajte názov obce.');
+                          return;
+                        }
+                        if (shippingConfig.municipalities?.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+                          toast.error('Táto obec už v zozname existuje.');
+                          return;
+                        }
+
+                        const newMun = { name, car35, hr8 };
+                        setShippingConfig({
+                          ...shippingConfig,
+                          municipalities: [...(shippingConfig.municipalities || []), newMun]
+                        });
+
+                        // Clear inputs
+                        if (nameEl) nameEl.value = '';
+                        if (carEl) carEl.value = '';
+                        if (hrEl) hrEl.value = '';
+                        toast.success(`Obec ${name} bola pridaná do zoznamu.`);
+                      }}
+                      className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs hover:bg-[#daf900] tracking-wider shrink-0 w-full sm:w-auto text-center"
+                    >
+                      Pridať
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-6 border-t border-outline/10">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#2d2f2b] text-primary py-4 font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all disabled:opacity-50"
+                >
+                  {loading ? 'UKLADÁM...' : 'ULOŽIŤ NASTAVENIA CENNÍKA'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Rental Modal */}
+        {showRentalModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/40 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white w-full max-w-2xl p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+              <button 
+                onClick={() => setShowRentalModal(false)}
+                className="absolute top-6 right-6 text-outline hover:text-on-surface transition-colors"
+              ><X size={24}/></button>
+              
+              <h2 className="text-3xl font-black tracking-tight mb-8">
+                {editingRental ? 'Upraviť techniku' : 'Nová technika'}
+              </h2>
+              
+              <form onSubmit={handleSaveRental} className="grid grid-cols-2 gap-6">
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Názov techniky</label>
+                  <input 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary"
+                    value={rentalFormData.name}
+                    onChange={e => setRentalFormData({...rentalFormData, name: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Kategória</label>
+                  <select 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold animate-none"
+                    value={rentalFormData.category}
+                    onChange={e => setRentalFormData({...rentalFormData, category: e.target.value})}
+                    required
+                  >
+                    <option value="Vibračná a hutniaca technika">Vibračná a hutniaca technika</option>
+                    <option value="Sekanie a vŕtanie">Sekanie a vŕtanie</option>
+                    <option value="Pílenie a rezanie">Pílenie a rezanie</option>
+                    <option value="Odvlhčovanie a iné">Odvlhčovanie a iné</option>
+                  </select>
+                </div>
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Vratná záloha (kaucia v €)</label>
+                  <input 
+                    type="number" step="0.01"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary"
+                    value={rentalFormData.deposit}
+                    onChange={e => setRentalFormData({...rentalFormData, deposit: parseFloat(e.target.value)})}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Cena do 4 hodín (€)</label>
+                  <input 
+                    type="number" step="0.01"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary"
+                    value={rentalFormData.price4h}
+                    onChange={e => setRentalFormData({...rentalFormData, price4h: parseFloat(e.target.value)})}
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Cena do 24 hodín (€)</label>
+                  <input 
+                    type="number" step="0.01"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary"
+                    value={rentalFormData.price24h}
+                    onChange={e => setRentalFormData({...rentalFormData, price24h: parseFloat(e.target.value)})}
+                    required
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Poznámka (napr. zľava nad 3 dni)</label>
+                  <input 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-medium"
+                    value={rentalFormData.note || ''}
+                    onChange={e => setRentalFormData({...rentalFormData, note: e.target.value})}
+                    placeholder="Napr. Zľava 10% nad 3 dni"
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Popis techniky</label>
+                  <textarea 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary min-h-[80px] resize-none text-sm font-medium"
+                    value={rentalFormData.description || ''}
+                    onChange={e => setRentalFormData({...rentalFormData, description: e.target.value})}
+                    placeholder="Technické parametre, výkon, využitie..."
+                  />
+                </div>
+
+                {/* Accessories Editor inside Modal */}
+                <div className="col-span-2 space-y-4 border-t border-outline/10 pt-4">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black uppercase text-outline tracking-wider">Odporúčané príslušenstvo / spotrebný materiál</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newAcc = { id: `acc_${Date.now()}`, name: '', price: 0, flat: true };
+                        setRentalFormData({
+                          ...rentalFormData,
+                          accessories: [...(rentalFormData.accessories || []), newAcc]
+                        });
+                      }}
+                      className="text-primary hover:text-on-surface font-bold text-xs uppercase flex items-center gap-1"
+                    >
+                      <PlusCircle size={14}/> Pridať položku
+                    </button>
+                  </div>
+
+                  {(rentalFormData.accessories || []).length === 0 ? (
+                    <p className="text-xs italic text-outline">K tejto technike zatiaľ nie je priradené žiadne príslušenstvo.</p>
+                  ) : (
+                    <div className="space-y-3 max-h-[180px] overflow-y-auto pr-2">
+                      {(rentalFormData.accessories || []).map((acc, index) => (
+                        <div key={acc.id || index} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-surface p-3 border border-outline/5">
+                          <input 
+                            placeholder="Názov (napr. Opotrebenie sekáča)"
+                            className="flex-1 bg-white p-2 text-xs font-semibold outline-none focus:ring-1 focus:ring-primary w-full"
+                            value={acc.name}
+                            onChange={(e) => {
+                              const updated = [...rentalFormData.accessories];
+                              updated[index].name = e.target.value;
+                              setRentalFormData({ ...rentalFormData, accessories: updated });
+                            }}
+                            required
+                          />
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <input 
+                              type="number" step="0.01" placeholder="Cena"
+                              className="w-20 bg-white p-2 text-xs font-black outline-none focus:ring-1 focus:ring-primary text-center"
+                              value={acc.price}
+                              onChange={(e) => {
+                                const updated = [...rentalFormData.accessories];
+                                updated[index].price = parseFloat(e.target.value) || 0;
+                                setRentalFormData({ ...rentalFormData, accessories: updated });
+                              }}
+                              required
+                            />
+                            <span className="text-xs font-bold text-outline">€</span>
+                          </div>
+                          <div className="flex items-center gap-2 select-none w-full sm:w-auto shrink-0">
+                            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold">
+                              <input 
+                                type="checkbox"
+                                checked={acc.flat !== false}
+                                onChange={(e) => {
+                                  const updated = [...rentalFormData.accessories];
+                                  updated[index].flat = e.target.checked;
+                                  setRentalFormData({ ...rentalFormData, accessories: updated });
+                                }}
+                                className="w-3.5 h-3.5 text-primary focus:ring-primary rounded-none"
+                              />
+                              Jednorazová
+                            </label>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = (rentalFormData.accessories || []).filter((_, idx) => idx !== index);
+                              setRentalFormData({ ...rentalFormData, accessories: updated });
+                            }}
+                            className="text-error hover:bg-error/10 p-1.5 self-end sm:self-center"
+                          >
+                            <Trash2 size={14}/>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="col-span-2 space-y-2 border-t border-outline/10 pt-4">
+                  <label className="text-[10px] font-bold uppercase text-outline block">Obrázok techniky</label>
+                  
+                  {rentalFormData.image_url ? (
+                    <div className="relative border border-outline/10 p-4 bg-surface flex flex-col sm:flex-row items-center gap-4">
+                      <img 
+                        src={rentalFormData.image_url} 
+                        alt="Náhľad techniky" 
+                        className="w-24 h-24 object-cover border border-outline/10 bg-white"
+                      />
+                      <div className="flex-1 text-center sm:text-left space-y-2">
+                        <p className="text-xs text-outline font-mono truncate max-w-xs sm:max-w-md">
+                          {rentalFormData.image_url}
+                        </p>
+                        <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                          <label className="bg-white border border-outline/20 text-on-surface px-4 py-2 text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:bg-surface-container-low transition-colors flex items-center gap-1.5">
+                            <Upload size={12} /> Zmeniť fotku
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={(e) => handleImageUpload(e, 'rental')} 
+                              disabled={imageUploading}
+                            />
+                          </label>
+                          <button 
+                            type="button"
+                            onClick={() => handleRemoveImage('rental')}
+                            className="bg-error/10 text-error px-4 py-2 text-[10px] font-bold uppercase tracking-wider hover:bg-error/20 transition-colors"
+                          >
+                            Odstrániť
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className={cn(
+                      "border-2 border-dashed border-outline/20 p-8 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all text-center",
+                      imageUploading && "pointer-events-none opacity-60"
+                    )}>
+                      {imageUploading ? (
+                        <>
+                          <Loader2 size={32} className="text-primary animate-spin" />
+                          <span className="text-xs font-bold uppercase text-outline">Nahrávam fotku na server...</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="bg-surface p-4 rounded-full text-outline/60">
+                            <Upload size={24} />
+                          </div>
+                          <span className="text-xs font-bold uppercase text-on-surface">Kliknite pre výber fotky</span>
+                          <span className="text-[10px] text-outline font-sans">PNG, JPG, WEBP (max. 5MB)</span>
+                        </>
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => handleImageUpload(e, 'rental')} 
+                        disabled={imageUploading}
+                      />
+                    </label>
+                  )}
+                </div>
+                
+                <div className="col-span-2 pt-4 border-t border-outline/10">
+                  <button 
+                    disabled={loading}
+                    className="w-full bg-primary text-on-primary py-4 font-black uppercase tracking-widest hover:bg-[#daf900] disabled:opacity-50"
+                  >
+                    {loading ? 'UKLADÁM...' : 'ULOŽIŤ POLOŽKU'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -558,8 +1858,9 @@ const Admin = () => {
                     onChange={e => setCategoryFormData({...categoryFormData, type: e.target.value})}
                   >
                     <option value="material">Materiály (V sekcii Materiály)</option>
-                    <option value="tool">Nástroje / Farby (V sekcii Nástroje)</option>
+                    <option value="tool">Náradie / Farby (V sekcii Náradie/Farby)</option>
                     <option value="rental">Požičovňa (V sekcii Požičovňa)</option>
+                    <option value="agriculture">Poľnohospodárstvo (V sekcii Poľno)</option>
                   </select>
                 </div>
                 <button 
@@ -613,7 +1914,7 @@ const StatCard = ({ label, value, change, highlight, danger }) => (
   </div>
 )
 
-const LoginComponent = ({ setSession }) => {
+const LoginComponent = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -622,7 +1923,11 @@ const LoginComponent = ({ setSession }) => {
     e.preventDefault()
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) alert(error.message)
+    if (error) {
+      toast.error('Chyba prihlásenia: ' + error.message)
+    } else {
+      toast.success('Prihlásenie úspešné!')
+    }
     setLoading(false)
   }
 

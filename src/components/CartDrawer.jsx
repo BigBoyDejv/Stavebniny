@@ -49,11 +49,11 @@ const CartDrawer = () => {
                       <Trash2 size={16} />
                     </button>
                   </div>
-                  <p className="text-on-surface-variant text-xs mb-3">{item.price.toFixed(2)} € / ks</p>
+                  <p className="text-on-surface-variant text-xs mb-3">{item.price.toFixed(2)} € / {item.unit || 'ks'}</p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center border border-outline/20 bg-surface">
                       <button onClick={() => updateQuantity(item.id, -1)} className="p-1 px-2 hover:bg-primary/20 transition-colors"><Minus size={12} /></button>
-                      <span className="px-3 text-xs font-bold">{item.quantity}</span>
+                      <span className="px-2 text-xs font-bold min-w-[3.5rem] text-center">{item.quantity} {item.unit || 'ks'}</span>
                       <button onClick={() => updateQuantity(item.id, 1)} className="p-1 px-2 hover:bg-primary/20 transition-colors"><Plus size={12} /></button>
                     </div>
                     <span className="font-black">{(item.price * item.quantity).toFixed(2)} €</span>

@@ -5,54 +5,39 @@ import { supabase } from '../lib/supabase'
 import { useCart } from '../context/CartContext'
 import { cn, getPlaceholderImage } from '../lib/utils'
 
-const Tools = () => {
+const Paints = () => {
   const { addToCart } = useCart()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [categories, setCategories] = useState(['Všetko'])
-  const [selectedCategory, setSelectedCategory] = useState('Všetko')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('newest')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [modalQty, setModalQty] = useState(1)
 
   useEffect(() => {
-    fetchTools()
-    fetchCategories()
+    fetchPaints()
   }, [])
 
-  const fetchCategories = async () => {
-    const { data } = await supabase
-      .from('categories')
-      .select('name')
-      .eq('type', 'tool')
-      .neq('name', 'Farby a laky')
-      .order('name')
-    if (data) setCategories(['Všetko', ...data.map(c => c.name)])
-  }
-
-  const fetchTools = async () => {
+  const fetchPaints = async () => {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('type', 'tool')
-        .neq('category', 'Farby a laky')
+        .eq('category', 'Farby a laky')
         .order('created_at', { ascending: false })
 
       if (error) throw error
       setProducts(data || [])
     } catch (error) {
-      console.error('Error fetching tools:', error.message)
+      console.error('Error fetching paints:', error.message)
     } finally {
       setLoading(false)
     }
   }
 
   const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategory === 'Všetko' || product.category === selectedCategory
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesCategory && matchesSearch
+    return matchesSearch
   })
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -66,15 +51,15 @@ const Tools = () => {
       <nav className="flex items-center gap-2 mb-8 text-sm font-label tracking-wide text-on-surface-variant">
         <Link className="hover:text-primary transition-colors" to="/">DOMOV</Link>
         <ChevronRight size={14} />
-        <span className="text-on-surface font-semibold uppercase">NÁRADIE</span>
+        <span className="text-on-surface font-semibold uppercase">FARBY A LAKY</span>
       </nav>
 
       <section className="mb-16">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
           <div className="max-w-3xl">
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 uppercase">Náradie</h1>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 uppercase">Farby / Laky</h1>
             <p className="text-lg text-on-surface-variant max-w-xl font-medium border-l-4 border-primary pl-6">
-              Profesionálne ručné a elektrické náradie a ochranné pomôcky pre vašu prácu.
+              Kvalitné farby, laky, lazúry a príslušenstvo pre interiérové aj exteriérové nátery.
             </p>
           </div>
 
@@ -82,7 +67,7 @@ const Tools = () => {
             <div className="relative group">
               <input
                 type="text"
-                placeholder="Hľadať náradie..."
+                placeholder="Hľadať produkt..."
                 className="w-full md:w-80 bg-white p-5 pl-12 text-sm font-bold uppercase tracking-widest border-b-2 border-outline/10 focus:border-primary outline-none transition-all"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
@@ -98,28 +83,6 @@ const Tools = () => {
         <aside className="w-full lg:w-64 shrink-0">
           <div className="sticky top-navigation-height">
             <div className="mb-10">
-              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-outline mb-6 flex items-center gap-2">
-                <Filter size={14} /> Kategórie
-              </h4>
-              <div className="flex flex-col gap-1">
-                {categories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={cn(
-                      "text-left px-4 py-3 text-xs font-bold uppercase tracking-widest transition-all",
-                      selectedCategory === cat
-                        ? "bg-primary text-on-primary shadow-md"
-                        : "hover:bg-surface text-on-surface-variant"
-                    )}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-outline mb-6">Zoradiť</h4>
               <select
                 value={sortBy}
@@ -141,7 +104,7 @@ const Tools = () => {
               [1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-[3/4] bg-white animate-pulse border border-outline/10"></div>)
             ) : sortedProducts.length === 0 ? (
               <div className="col-span-full py-20 text-center bg-white border border-dashed border-outline/20">
-                <p className="font-bold text-outline">Nenašli sme žiadne náradie.</p>
+                <p className="font-bold text-outline">Nenašli sme žiadne produkty.</p>
               </div>
             ) : (
                sortedProducts.map((product) => {
@@ -212,7 +175,7 @@ const Tools = () => {
             <div className="w-full md:w-1/2 p-6 md:p-16 overflow-y-auto flex flex-col">
               <div className="mb-auto">
                 <span className="text-primary-strong font-bold tracking-[0.2em] text-[10px] md:text-xs uppercase mb-2 md:mb-4 block">
-                  {selectedProduct.category || 'Náradie'}
+                  {selectedProduct.category || 'Farby a laky'}
                 </span>
                 <h2 className="text-2xl md:text-5xl font-black tracking-tighter mb-4 md:mb-6 leading-none">
                   {selectedProduct.name}
@@ -284,4 +247,4 @@ const Tools = () => {
   )
 }
 
-export default Tools
+export default Paints
