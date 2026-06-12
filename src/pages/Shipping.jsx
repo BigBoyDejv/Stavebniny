@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Truck, CreditCard, ShieldCheck, MapPin, Calculator, AlertCircle } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { 
@@ -13,6 +13,10 @@ import { cn } from '../lib/utils';
 
 const Shipping = () => {
   const { settings } = useSettings();
+
+  useEffect(() => {
+    document.title = "Doprava a platba | Stavebniny Ľubeľa"
+  }, [])
 
   // Parse shipping config from settings if available
   let activeMunicipalities = MUNICIPALITIES;
@@ -84,7 +88,7 @@ const Shipping = () => {
             <li className="bg-surface p-6 border-l-4 border-primary shadow-sm">
               <p className="font-bold mb-1">Dovoz na stavbu (Vlastná doprava)</p>
               <p className="text-xs text-on-surface-variant leading-relaxed">
-                Pre dovoz zakúpeného stavebného materiálu na vašu adresu. K dispozícii je vozidlo do 3.5t pre užšie uličky, alebo 8t vozidlo s hydraulickou rukou pre vykládku paliet.
+                Pre dovoz zakúpeného stavebného materiálu na vašu adresu. K dispozícii je dodávka s nosnosťou do 1,5 tony pre užšie uličky, alebo nákladné auto s nosnosťou do 8 ton a hydraulickou rukou pre vykládku paliet.
               </p>
               <p className="mt-3 text-xs font-black uppercase text-primary-strong">Cena: Podľa kalkulačky nižšie</p>
             </li>
@@ -119,6 +123,71 @@ const Shipping = () => {
           </ul>
         </section>
       </div>
+
+      {/* Cenník Dopravy podľa Okruhov Table */}
+      <section className="bg-white p-8 border border-outline/10 shadow-sm mb-16">
+        <div className="flex items-center gap-3 mb-6">
+          <span className="material-symbols-outlined text-primary-strong text-3xl">map</span>
+          <h2 className="text-2xl font-black uppercase tracking-tight">Cenník dopravy podľa okruhov</h2>
+        </div>
+        <p className="text-xs text-on-surface-variant mb-6 font-medium max-w-2xl leading-relaxed">
+          Ceny dovozu materiálu zo stavebnín sú odstupňované do okruhov (kruhov) podľa vzdialenosti obcí od nášho skladu v Ľubeli.
+        </p>
+
+        <div className="overflow-x-auto border border-outline/10">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-[#f7f7f0] border-b border-outline/10">
+                <th className="px-6 py-4 text-xs font-black uppercase tracking-wider text-outline">Okruh / Pásmo</th>
+                <th className="px-6 py-4 text-xs font-black uppercase tracking-wider text-outline">Obce</th>
+                <th className="px-6 py-4 text-xs font-black uppercase tracking-wider text-outline text-right">Dodávka do 1,5t</th>
+                <th className="px-6 py-4 text-xs font-black uppercase tracking-wider text-outline text-right">Auto s HR do 8t</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline/5 text-xs font-bold">
+              <tr className="hover:bg-surface-container-lowest transition-colors">
+                <td className="px-6 py-4 font-black uppercase tracking-wide text-primary-strong">1. Okruh (Miestny)</td>
+                <td className="px-6 py-4 font-medium text-on-surface-variant">Ľubeľa</td>
+                <td className="px-6 py-4 font-black text-right text-sm">8.00 €</td>
+                <td className="px-6 py-4 font-black text-right text-sm">45.00 €</td>
+              </tr>
+              <tr className="hover:bg-surface-container-lowest transition-colors">
+                <td className="px-6 py-4 font-black uppercase tracking-wide text-primary-strong">2. Okruh</td>
+                <td className="px-6 py-4 font-medium text-on-surface-variant">Dúbrava, Lipt. Kľačany, Krmeš, Malatíny, Gôtovany</td>
+                <td className="px-6 py-4 font-black text-right text-sm">16.00 €</td>
+                <td className="px-6 py-4 font-black text-right text-sm">45.00 €</td>
+              </tr>
+              <tr className="hover:bg-surface-container-lowest transition-colors">
+                <td className="px-6 py-4 font-black uppercase tracking-wide text-primary-strong">3. Okruh</td>
+                <td className="px-6 py-4 font-medium text-on-surface-variant">Partizánska Ľupča, Vlachy, Vlašky, Svätý Kríž, Gálovany</td>
+                <td className="px-6 py-4 font-black text-right text-sm">20.00 €</td>
+                <td className="px-6 py-4 font-black text-right text-sm">45.00 € / 50.00 €*</td>
+              </tr>
+              <tr className="hover:bg-surface-container-lowest transition-colors">
+                <td className="px-6 py-4 font-black uppercase tracking-wide text-primary-strong">4. Okruh</td>
+                <td className="px-6 py-4 font-medium text-on-surface-variant">Liptovský Michal, Andice</td>
+                <td className="px-6 py-4 font-black text-right text-sm">25.00 €</td>
+                <td className="px-6 py-4 font-black text-right text-sm">50.00 €</td>
+              </tr>
+              <tr className="hover:bg-surface-container-lowest transition-colors">
+                <td className="px-6 py-4 font-black uppercase tracking-wide text-primary-strong">5. Okruh</td>
+                <td className="px-6 py-4 font-medium text-on-surface-variant">Liptovský Mikuláš, Ružomberok</td>
+                <td className="px-6 py-4 font-black text-right text-sm">30.00 €</td>
+                <td className="px-6 py-4 font-black text-right text-sm">50.00 €</td>
+              </tr>
+              <tr className="hover:bg-surface-container-lowest transition-colors">
+                <td className="px-6 py-4 font-black uppercase tracking-wide text-primary-strong">Mimo okruhov</td>
+                <td className="px-6 py-4 font-medium text-on-surface-variant">Ostatné obce v okrese Lipt. Mikuláš / Ružomberok</td>
+                <td className="px-6 py-4 font-black text-right text-sm">1.50 € / km</td>
+                <td className="px-6 py-4 font-black text-right text-sm">3.00 € / km</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-[10px] text-outline mt-3 font-semibold uppercase leading-normal">
+          * V 3. okruhu má obec Partizánska Ľupča sadzbu pre 8t auto s HR vo výške 45.00 €, ostatné obce v tomto okruhu majú sadzbu 50.00 €. Sadzba za km mimo okruhov sa ráta za celkovú trasu tam aj späť.
+        </p>
+      </section>
 
       {/* Shipping Calculator Section */}
       <section className="bg-[#2d2f2b] text-white p-6 md:p-12 shadow-2xl relative overflow-hidden">
@@ -188,8 +257,8 @@ const Shipping = () => {
                         onChange={(e) => setVehicle(e.target.value)}
                         className="w-full bg-[#1c1e1a] border border-zinc-700 p-4 text-sm font-bold text-white outline-none focus:border-primary transition-colors"
                       >
-                        <option value="car35">Auto do 3.5t (Ľahké dovozy)</option>
-                        <option value="hr8">Auto s hydraulickou rukou 8t (Ťažké palety)</option>
+                        <option value="car35">Dodávka do 1,5 tony (Ľahké dovozy)</option>
+                        <option value="hr8">Auto s hydraulickou rukou do 8 ton (Ťažké palety)</option>
                       </select>
                     </div>
                   </div>
@@ -339,7 +408,7 @@ const Shipping = () => {
                     <div className="flex justify-between text-xs text-zinc-400">
                       <span>Typ vozidla:</span>
                       <span className="font-bold text-white uppercase text-[10px] tracking-wider bg-zinc-800 px-2 py-0.5">
-                        {vehicle === 'hr8' ? 'Auto s HR 8t' : 'Auto do 3.5t'}
+                        {vehicle === 'hr8' ? 'Auto s HR do 8t' : 'Dodávka do 1.5t'}
                       </span>
                     </div>
                   </div>

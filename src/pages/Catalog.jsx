@@ -18,6 +18,7 @@ const Catalog = () => {
   const [modalQty, setModalQty] = useState(1)
 
   useEffect(() => {
+    document.title = "Stavebné materiály | Stavebniny Ľubeľa"
     fetchProducts()
     fetchCategories()
   }, [])

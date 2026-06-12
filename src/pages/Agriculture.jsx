@@ -17,6 +17,7 @@ const Agriculture = () => {
   const [modalQty, setModalQty] = useState(1)
 
   useEffect(() => {
+    document.title = "Poľnohospodárske potreby | Stavebniny Ľubeľa"
     fetchAgriculture()
     fetchCategories()
   }, [])

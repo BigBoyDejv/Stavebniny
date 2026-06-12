@@ -58,6 +58,51 @@ const Admin = () => {
     unit: 'ks'
   })
 
+  const [settingsForm, setSettingsForm] = useState({
+    hours_weekday: '',
+    hours_saturday: '',
+    hours_sunday: '',
+    contact_phone: '',
+    contact_address: '',
+    contact_email: '',
+    billing_name: '',
+    billing_ico: '',
+    billing_icdph: '',
+    hours_alert_enabled: 'false',
+    hours_alert_message: '',
+    hours_alert_type: 'info'
+  })
+
+  useEffect(() => {
+    if (settings) {
+      setSettingsForm({
+        hours_weekday: settings.hours_weekday || '',
+        hours_saturday: settings.hours_saturday || '',
+        hours_sunday: settings.hours_sunday || '',
+        contact_phone: settings.contact_phone || '',
+        contact_address: settings.contact_address || '',
+        contact_email: settings.contact_email || '',
+        billing_name: settings.billing_name || '',
+        billing_ico: settings.billing_ico || '',
+        billing_icdph: settings.billing_icdph || '',
+        hours_alert_enabled: settings.hours_alert_enabled || 'false',
+        hours_alert_message: settings.hours_alert_message || '',
+        hours_alert_type: settings.hours_alert_type || 'info'
+      })
+    }
+  }, [settings, view])
+
+  const changeView = (newView) => {
+    setView(newView)
+    setData([])
+    setSearchTerm('')
+    setIsSidebarOpen(false)
+  }
+
+  useEffect(() => {
+    document.title = "Administrácia | Stavebniny PRO"
+  }, [])
+
   useEffect(() => {
     if (session) {
        fetchData()
@@ -266,6 +311,29 @@ const Admin = () => {
     }
   }
 
+  const handleSaveSystemSettings = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const upsertPromises = Object.entries(settingsForm).map(([key, value]) => {
+        return supabase
+          .from('site_settings')
+          .upsert({ key, value: String(value) })
+      })
+      
+      const results = await Promise.all(upsertPromises)
+      const failed = results.find(r => r.error)
+      if (failed) throw failed.error
+      
+      toast.success('Systémové nastavenia boli úspešne uložené!')
+      await refreshSettings()
+    } catch (err) {
+      toast.error('Chyba pri ukladaní nastavení: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleViewOrder = async (order) => {
     try {
       const { data, error } = await supabase
@@ -395,16 +463,16 @@ const Admin = () => {
         </div>
         
         <nav className="flex-1 px-4 space-y-1">
-          <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => { setView('dashboard'); setIsSidebarOpen(false); }} />
-          <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => { setView('products'); setIsSidebarOpen(false); }} />
-          <NavItem icon={<Filter size={18}/>} label="Kategórie" active={view === 'categories'} onClick={() => { setView('categories'); setIsSidebarOpen(false); }} />
-          <NavItem icon={<Truck size={18}/>} label="Objednávky" active={view === 'orders'} onClick={() => { setView('orders'); setIsSidebarOpen(false); }} />
-          <NavItem icon={<MessageSquare size={18}/>} label="Zákaznícke dopyty" active={view === 'inquiries'} onClick={() => { setView('inquiries'); setIsSidebarOpen(false); }} />
-          <NavItem icon={<Calendar size={18}/>} label="Rezervácie techniky" active={view === 'bookings'} onClick={() => { setView('bookings'); setIsSidebarOpen(false); }} />
-          <NavItem icon={<Wrench size={18}/>} label="Správa Požičovne" active={view === 'rentals'} onClick={() => { setView('rentals'); setIsSidebarOpen(false); }} />
+          <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => changeView('dashboard')} />
+          <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => changeView('products')} />
+          <NavItem icon={<Filter size={18}/>} label="Kategórie" active={view === 'categories'} onClick={() => changeView('categories')} />
+          <NavItem icon={<Truck size={18}/>} label="Objednávky" active={view === 'orders'} onClick={() => changeView('orders')} />
+          <NavItem icon={<MessageSquare size={18}/>} label="Zákaznícke dopyty" active={view === 'inquiries'} onClick={() => changeView('inquiries')} />
+          <NavItem icon={<Calendar size={18}/>} label="Rezervácie techniky" active={view === 'bookings'} onClick={() => changeView('bookings')} />
+          <NavItem icon={<Wrench size={18}/>} label="Správa Požičovne" active={view === 'rentals'} onClick={() => changeView('rentals')} />
           <div className="pt-8 pb-4 px-4 text-[10px] font-bold uppercase text-outline tracking-wider">Nastavenia</div>
-          <NavItem icon={<Sliders size={18}/>} label="Cenník Dopravy" active={view === 'shipping'} onClick={() => { setView('shipping'); setIsSidebarOpen(false); }} />
-          <NavItem icon={<Settings size={18}/>} label="Systém" active={view === 'settings'} onClick={() => { setView('settings'); setIsSidebarOpen(false); }} />
+          <NavItem icon={<Sliders size={18}/>} label="Cenník Dopravy" active={view === 'shipping'} onClick={() => changeView('shipping')} />
+          <NavItem icon={<Settings size={18}/>} label="Systém" active={view === 'settings'} onClick={() => changeView('settings')} />
         </nav>
 
         <div className="p-8 mt-auto border-t border-outline/10">
@@ -485,7 +553,7 @@ const Admin = () => {
 
         {view === 'dashboard' && <DashboardStats stats={stats} />}
         
-        {view !== 'dashboard' && view !== 'shipping' && (
+        {view !== 'dashboard' && view !== 'shipping' && view !== 'settings' && (
           <div className="bg-white border border-outline/10 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-outline/10 flex gap-4">
                <div className="relative flex-1">
@@ -589,7 +657,7 @@ const Admin = () => {
                           </td>
                           <td className="px-6 py-5">
                             <div className="flex items-center gap-4">
-                              <span className="font-black text-sm">{item.price.toFixed(2)} € / {item.unit || 'ks'}</span>
+                              <span className="font-black text-sm">{(item.price || 0).toFixed(2)} € / {item.unit || 'ks'}</span>
                               <span className={cn(
                                 "text-[10px] font-bold px-2 py-0.5 uppercase",
                                 item.stock_quantity < 5 ? "bg-error/10 text-error" : "bg-emerald-100 text-emerald-700"
@@ -647,10 +715,10 @@ const Admin = () => {
                           </td>
                           <td className="px-6 py-5 text-xs">
                             <p className="font-medium">{item.shipping_info?.phone}</p>
-                            <a href={`mailto:${item.shipping_info?.email}`} className="text-primary hover:underline font-bold block mt-0.5">{item.shipping_info?.email}</a>
+                            <a href={`mailto:${item.shipping_info?.email}`} className="text-primary-strong hover:underline font-bold block mt-0.5">{item.shipping_info?.email}</a>
                           </td>
                           <td className="px-6 py-5 font-black text-sm">
-                            {item.total_price.toFixed(2)} €
+                            {(item.total_price || 0).toFixed(2)} €
                           </td>
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-2 items-center">
@@ -679,7 +747,7 @@ const Admin = () => {
                             <p className="text-[10px] text-outline font-mono">{new Date(item.created_at).toLocaleString('sk-SK')}</p>
                           </td>
                           <td className="px-6 py-5 text-xs">
-                            <a href={`mailto:${item.email}`} className="text-primary hover:underline font-bold block">{item.email}</a>
+                            <a href={`mailto:${item.email}`} className="text-primary-strong hover:underline font-bold block">{item.email}</a>
                           </td>
                           <td className="px-6 py-5 text-xs text-on-surface-variant font-medium whitespace-pre-wrap max-w-sm">
                             {item.message}
@@ -709,14 +777,21 @@ const Admin = () => {
                           </td>
                           <td className="px-6 py-5 text-xs">
                             <p className="font-medium">{item.customer_phone}</p>
-                            <a href={`mailto:${item.customer_email}`} className="text-primary hover:underline font-bold block mt-0.5">{item.customer_email}</a>
+                            <a href={`mailto:${item.customer_email}`} className="text-primary-strong hover:underline font-bold block mt-0.5">{item.customer_email}</a>
                           </td>
                           <td className="px-6 py-5">
                             <p className="font-bold text-sm text-primary-strong">{item.rental_items?.name || 'Neznáma technika'}</p>
                           </td>
                           <td className="px-6 py-5 text-xs">
-                            <p className="font-bold text-sm">{new Date(item.start_date).toLocaleDateString('sk-SK')} - {new Date(item.end_date).toLocaleDateString('sk-SK')}</p>
-                            {item.note && <p className="text-[10px] italic text-outline mt-1 font-medium whitespace-pre-wrap max-w-[200px]">Poznámka: {item.note}</p>}
+                            <p className="font-bold text-sm">
+                              {new Date(item.start_date).toLocaleDateString('sk-SK')} {item.start_time ? `o ${item.start_time}` : ''} - {new Date(item.end_date).toLocaleDateString('sk-SK')} {item.end_time ? `o ${item.end_time}` : ''}
+                            </p>
+                            {item.delivery_method === 'delivery' && (
+                              <p className="text-[10px] text-primary-strong font-black uppercase mt-1">
+                                Dovoz: {item.delivery_municipality} (+{Number(item.delivery_price || 0).toFixed(2)} €)
+                              </p>
+                            )}
+                            {item.note && <p className="text-[10px] italic text-outline mt-1.5 font-medium whitespace-pre-wrap max-w-[200px]">Poznámka: {item.note}</p>}
                           </td>
                           <td className="px-6 py-5">
                             <span className={cn(
@@ -853,11 +928,16 @@ const Admin = () => {
                         <div className="bg-surface p-3 text-xs border border-outline/5 space-y-2">
                           <p className="font-bold text-primary-strong text-sm">{item.rental_items?.name || 'Neznáma technika'}</p>
                           <p className="text-[10px] font-bold text-outline uppercase tracking-wider">
-                            Obdobie: {new Date(item.start_date).toLocaleDateString('sk-SK')} - {new Date(item.end_date).toLocaleDateString('sk-SK')}
+                            Obdobie: {new Date(item.start_date).toLocaleDateString('sk-SK')} {item.start_time ? `o ${item.start_time}` : ''} - {new Date(item.end_date).toLocaleDateString('sk-SK')} {item.end_time ? `o ${item.end_time}` : ''}
                           </p>
+                          {item.delivery_method === 'delivery' && (
+                             <p className="text-[10px] font-bold text-primary-strong uppercase tracking-wider">
+                               Dovoz: {item.delivery_address || ''}, {item.delivery_city || ''} ({item.delivery_municipality || ''}) (+{Number(item.delivery_price || 0).toFixed(2)} €)
+                             </p>
+                           )}
                           <div className="pt-1 border-t border-outline/5 space-y-0.5">
                             <p><strong>Tel:</strong> <a href={`tel:${item.customer_phone}`} className="text-primary hover:underline font-bold">{item.customer_phone}</a></p>
-                            <p><strong>E-mail:</strong> <a href={`mailto:${item.customer_email}`} className="text-primary hover:underline font-bold">{item.customer_email}</a></p>
+                            <p><strong>E-mail:</strong> <a href={`mailto:${item.customer_email}`} className="text-primary-strong hover:underline font-bold">{item.customer_email}</a></p>
                           </div>
                           {item.note && <p className="text-[10px] italic text-outline mt-1 font-medium whitespace-pre-wrap">Poznámka: {item.note}</p>}
                         </div>
@@ -947,7 +1027,7 @@ const Admin = () => {
                             <p className="text-[10px] text-outline font-mono uppercase mt-1">{item.sku || 'Bez SKU'}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="block font-black text-base text-on-surface">{item.price.toFixed(2)} € / {item.unit || 'ks'}</span>
+                            <span className="block font-black text-base text-on-surface">{(item.price || 0).toFixed(2)} € / {item.unit || 'ks'}</span>
                             <span className={cn(
                               "inline-block text-[9px] font-black px-2 py-0.5 uppercase mt-1",
                               item.stock_quantity < 5 ? "bg-error/10 text-error" : "bg-emerald-100 text-emerald-700"
@@ -1006,8 +1086,8 @@ const Admin = () => {
                         </div>
                         <div className="bg-surface p-3 text-xs border border-outline/5 space-y-1">
                           <p><strong>Tel:</strong> <a href={`tel:${item.shipping_info?.phone}`} className="text-primary hover:underline font-bold">{item.shipping_info?.phone}</a></p>
-                          <p><strong>E-mail:</strong> <a href={`mailto:${item.shipping_info?.email}`} className="text-primary hover:underline font-bold">{item.shipping_info?.email}</a></p>
-                          <p className="pt-1.5 border-t border-outline/5 text-sm font-black">Celková suma: {item.total_price.toFixed(2)} €</p>
+                          <p><strong>E-mail:</strong> <a href={`mailto:${item.shipping_info?.email}`} className="text-primary-strong hover:underline font-bold">{item.shipping_info?.email}</a></p>
+                          <p className="pt-1.5 border-t border-outline/5 text-sm font-black">Celková suma: {(item.total_price || 0).toFixed(2)} €</p>
                         </div>
                         <div className="flex gap-2 pt-2">
                           <button 
@@ -1030,7 +1110,7 @@ const Admin = () => {
                             <p className="font-bold text-base text-on-surface leading-tight">{item.name}</p>
                             <p className="text-[10px] text-outline font-mono mt-1">{new Date(item.created_at).toLocaleString('sk-SK')}</p>
                           </div>
-                          <a href={`mailto:${item.email}`} className="text-[9px] bg-primary/10 text-primary px-2 py-1 uppercase font-black tracking-wider shrink-0 hover:underline">
+                          <a href={`mailto:${item.email}`} className="text-[9px] bg-primary/10 text-primary-strong px-2 py-1 uppercase font-black tracking-wider shrink-0 hover:underline">
                             E-mail
                           </a>
                         </div>
@@ -1275,7 +1355,7 @@ const Admin = () => {
                       {selectedOrder.shipping_info?.firstName || ''} {selectedOrder.shipping_info?.lastName || ''}
                     </p>
                     <p className="text-on-surface-variant">
-                      <a href={`mailto:${selectedOrder.shipping_info?.email}`} className="text-primary hover:underline font-bold">
+                      <a href={`mailto:${selectedOrder.shipping_info?.email}`} className="text-primary-strong hover:underline font-bold">
                         {selectedOrder.shipping_info?.email || ''}
                       </a>
                     </p>
@@ -1578,6 +1658,192 @@ const Admin = () => {
                   className="w-full bg-[#2d2f2b] text-primary py-4 font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all disabled:opacity-50"
                 >
                   {loading ? 'UKLADÁM...' : 'ULOŽIŤ NASTAVENIA CENNÍKA'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* System Settings Editor */}
+        {view === 'settings' && (
+          <div className="bg-white border border-outline/10 shadow-sm p-8 max-w-4xl space-y-8">
+            <h2 className="text-2xl font-black mb-8 pb-4 border-b border-outline/10 tracking-tight">
+              SYSTÉMOVÉ NASTAVENIA WEBU
+            </h2>
+            <form onSubmit={handleSaveSystemSettings} className="space-y-8">
+              {/* Alert Banner / Announcement Section */}
+              <div className="space-y-6 bg-primary/5 p-6 border border-primary/20">
+                <h3 className="text-sm font-black uppercase tracking-wider text-primary-strong flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">campaign</span>
+                  Oznamovací banner (Úvodná stránka)
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase text-outline block">Zobraziť banner na webe</label>
+                    <select
+                      className="w-full bg-white border border-outline/20 p-4 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
+                      value={settingsForm.hours_alert_enabled}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, hours_alert_enabled: e.target.value })}
+                    >
+                      <option value="false">Vypnutý (Skrytý)</option>
+                      <option value="true">Zapnutý (Viditeľný)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase text-outline block">Farba / Typ hlásenia</label>
+                    <select
+                      className="w-full bg-white border border-outline/20 p-4 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
+                      value={settingsForm.hours_alert_type}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, hours_alert_type: e.target.value })}
+                    >
+                      <option value="info">Info (Zelená / Svetlá)</option>
+                      <option value="warning">Upozornenie (Žltá / Oranžová)</option>
+                      <option value="error">Dôležité (Červená)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase text-outline block">Text hlásenia</label>
+                  <textarea
+                    className="w-full bg-white border border-outline/20 p-4 text-sm font-medium outline-none focus:ring-1 focus:ring-primary min-h-[80px] resize-none"
+                    placeholder="Napr. Upozornenie: Dňa 5.7. bude predajňa z dôvodu sviatku zatvorená."
+                    value={settingsForm.hours_alert_message}
+                    onChange={(e) => setSettingsForm({ ...settingsForm, hours_alert_message: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Opening Hours Section */}
+              <div className="space-y-6 pt-4 border-t border-outline/10">
+                <h3 className="text-sm font-black uppercase tracking-wider text-primary-strong flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">schedule</span>
+                  Otváracie hodiny
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Pondelok - Piatok</label>
+                    <input
+                      type="text"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.hours_weekday}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, hours_weekday: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Sobota</label>
+                    <input
+                      type="text"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.hours_saturday}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, hours_saturday: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Nedeľa</label>
+                    <input
+                      type="text"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.hours_sunday}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, hours_sunday: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Info Section */}
+              <div className="space-y-6 pt-4 border-t border-outline/10">
+                <h3 className="text-sm font-black uppercase tracking-wider text-primary-strong flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">contact_mail</span>
+                  Kontaktné údaje
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Telefón</label>
+                    <input
+                      type="text"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.contact_phone}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, contact_phone: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">E-mail</label>
+                    <input
+                      type="email"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.contact_email}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, contact_email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Adresa predajne</label>
+                    <input
+                      type="text"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.contact_address}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, contact_address: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Billing Info Section */}
+              <div className="space-y-6 pt-4 border-t border-outline/10">
+                <h3 className="text-sm font-black uppercase tracking-wider text-primary-strong flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">receipt_long</span>
+                  Fakturačné údaje
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">Obchodné meno</label>
+                    <input
+                      type="text"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.billing_name}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, billing_name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">IČO</label>
+                    <input
+                      type="text"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.billing_ico}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, billing_ico: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase text-outline">IČ DPH</label>
+                    <input
+                      type="text"
+                      className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                      value={settingsForm.billing_icdph}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, billing_icdph: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-6 border-t border-outline/10">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[#2d2f2b] text-primary py-4 font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all disabled:opacity-50"
+                >
+                  {loading ? 'UKLADÁM...' : 'ULOŽIŤ SYSTÉMOVÉ NASTAVENIA'}
                 </button>
               </div>
             </form>

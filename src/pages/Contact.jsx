@@ -1,16 +1,21 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Mail, Phone, MapPin, Clock, MessageSquare, Send, CheckCircle, Smartphone, User, HelpCircle, ArrowRight, ShieldCheck, Headphones } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { cn } from '../lib/utils'
 import { toast } from 'react-hot-toast'
 import { useSettings } from '../context/SettingsContext'
 import { Editable } from '../components/Editable'
+import { sendEmailNotification } from '../lib/email'
 
 const Contact = () => {
   const { settings } = useSettings()
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: 'Všeobecný dopyt', message: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    document.title = "Kontakt | Stavebniny Ľubeľa"
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -24,6 +29,19 @@ const Contact = () => {
         }])
 
       if (error) throw error
+
+      // Odoslanie e-mailovej notifikácie (ak je povolená)
+      const emailTo = settings.contact_email || 'kubik@stavivalubela.sk';
+      await sendEmailNotification({
+        type: 'Kontakt',
+        emailTo: emailTo,
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        subject: formData.subject,
+        details: formData.message
+      });
+
       setSent(true)
       setFormData({ name: '', email: '', phone: '', subject: 'Všeobecný dopyt', message: '' })
     } catch (error) {

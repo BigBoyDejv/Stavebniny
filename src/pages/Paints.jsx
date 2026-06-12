@@ -15,6 +15,7 @@ const Paints = () => {
   const [modalQty, setModalQty] = useState(1)
 
   useEffect(() => {
+    document.title = "Farby a laky | Stavebniny Ľubeľa"
     fetchPaints()
   }, [])
 

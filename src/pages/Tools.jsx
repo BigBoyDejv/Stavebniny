@@ -17,6 +17,7 @@ const Tools = () => {
   const [modalQty, setModalQty] = useState(1)
 
   useEffect(() => {
+    document.title = "Náradie a nástroje | Stavebniny Ľubeľa"
     fetchTools()
     fetchCategories()
   }, [])

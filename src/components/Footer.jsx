@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Phone, Mail, MapPin } from 'lucide-react'
+import { Phone, Mail, MapPin, Clock } from 'lucide-react'
 import { useSettings } from '../context/SettingsContext'
 
 const Footer = () => {
@@ -8,7 +8,7 @@ const Footer = () => {
 
   return (
     <footer className="bg-[#1a1b1a] w-full pt-16 pb-8 text-[#adaea7] border-t border-white/5">
-      <div className="max-w-[1440px] mx-auto px-8 grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+      <div className="max-w-[1440px] mx-auto px-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 mb-16">
         <div className="md:col-span-1">
           <div className="flex items-center gap-2 mb-6">
             <img src="/Logo.png" alt="Logo" className="h-8 brightness-0 invert opacity-80" />
@@ -17,31 +17,39 @@ const Footer = () => {
             </span>
           </div>
           <p className="text-xs leading-relaxed max-w-xs mb-6">
-            Váš spoľahlivý partner pre hrubú stavbu, sádrokartónové systémy a záhradné riešenia už od roku 2026.
+            Váš spoľahlivý regionálny partner pre stavebné materiály, náradie, farby-laky, poľnohospodárske potreby a požičovňu techniky.
           </p>
+          <div className="text-[10px] font-bold uppercase tracking-widest opacity-40 space-y-1">
+            <p>IČO: {settings.billing_ico}</p>
+            <p>IČ DPH: {settings.billing_icdph}</p>
+          </div>
         </div>
 
         <div>
-          <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-6">Navigácia</h4>
+          <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-6">Naša ponuka</h4>
+          <ul className="space-y-3 flex flex-col">
+            <Link className="text-xs hover:text-white transition-colors" to="/materialy">Stavebné materiály</Link>
+            <Link className="text-xs hover:text-white transition-colors" to="/naradie">Náradie a nástroje</Link>
+            <Link className="text-xs hover:text-white transition-colors" to="/farby-laky">Farby a laky</Link>
+            <Link className="text-xs hover:text-white transition-colors" to="/polnohospodarske-produkty">Poľnohospodárske potreby</Link>
+            <Link className="text-xs hover:text-white transition-colors" to="/pozicovna">Požičovňa náradia & techniky</Link>
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-6">Užitočné odkazy</h4>
           <ul className="space-y-3 flex flex-col">
             <Link className="text-xs hover:text-white transition-colors" to="/">Domov</Link>
-            <Link className="text-xs hover:text-white transition-colors" to="/materialy">Katalóg materiálov</Link>
-            <Link className="text-xs hover:text-white transition-colors" to="/kontakt">Kontakt</Link>
-            <Link className="text-xs hover:text-white transition-colors" to="/admin">Partner Portál</Link>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-6">Právne info</h4>
-          <ul className="space-y-3 flex flex-col">
-            <Link className="text-xs hover:text-white transition-colors" to="/gdpr">Ochrana údajov (GDPR)</Link>
-            <Link className="text-xs hover:text-white transition-colors" to="/obchodne-podmienky">Obchodné podmienky</Link>
             <Link className="text-xs hover:text-white transition-colors" to="/doprava-a-platba">Doprava a platba</Link>
+            <Link className="text-xs hover:text-white transition-colors" to="/kontakt">Kontakt</Link>
+            <Link className="text-xs hover:text-white transition-colors" to="/obchodne-podmienky">Všeobecné obchodné podmienky</Link>
+            <Link className="text-xs hover:text-white transition-colors" to="/gdpr">Ochrana osobných údajov (GDPR)</Link>
+            <Link className="text-xs hover:text-white transition-colors" to="/admin">Partner Portál (Administrácia)</Link>
           </ul>
         </div>
 
         <div>
-          <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-6">Kontakt</h4>
+          <h4 className="text-white font-black uppercase text-[10px] tracking-widest mb-6">Kontakt & Prevádzka</h4>
           <ul className="space-y-4">
             <li className="flex items-start gap-3 mt-1">
               <MapPin size={16} className="text-primary shrink-0" />
@@ -60,13 +68,22 @@ const Footer = () => {
                 {settings.contact_email || 'kubik@stavivalubela.sk'}
               </a>
             </li>
+            <li className="flex items-start gap-3 pt-2 border-t border-white/5">
+              <Clock size={16} className="text-primary shrink-0" />
+              <div className="text-xs space-y-1">
+                <strong className="text-white block">Otváracie hodiny:</strong>
+                <p>Po-Pi: {settings.hours_weekday}</p>
+                <p>So: {settings.hours_saturday}</p>
+                <p className="text-error font-semibold">Ne: {settings.hours_sunday}</p>
+              </div>
+            </li>
           </ul>
         </div>
       </div>
 
       <div className="max-w-[1440px] mx-auto px-8 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="text-[10px] font-bold uppercase tracking-widest opacity-40">
-          IČO: {settings.billing_ico}  |  IČ DPH: {settings.billing_icdph}
+          Stavebniny Ľubeľa - Všetko pre Vašu stavbu, záhradu a dielňu.
         </div>
         <div className="text-primary font-headline text-[10px] uppercase tracking-widest font-black">
           © {new Date().getFullYear()} STAVEBNINY ĽUBEĽA. VŠETKY PRÁVA VYHRADENÉ.

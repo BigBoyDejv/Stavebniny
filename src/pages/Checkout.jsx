@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { supabase } from '../lib/supabase';
 import { ChevronRight, CreditCard, Truck, ShieldCheck, CheckCircle } from 'lucide-react';
@@ -12,9 +12,14 @@ import {
   ADDITIONAL_FEES, 
   calculateShopShipping 
 } from '../lib/shipping';
+import { sendEmailNotification } from '../lib/email';
 
 const Checkout = () => {
   const { settings } = useSettings();
+
+  useEffect(() => {
+    document.title = "Dokončenie objednávky | Stavebniny Ľubeľa"
+  }, [])
 
   // Parse shipping config from settings if available
   let activeMunicipalities = MUNICIPALITIES;
@@ -96,7 +101,7 @@ const Checkout = () => {
         ...(shippingMethod === 'delivery' ? {
           deliveryMunicipality: municipality === 'other' ? 'Iná obec' : municipality,
           deliveryDistanceKm: municipality === 'other' ? customDistance : null,
-          deliveryVehicle: vehicle === 'hr8' ? 'Auto s HR 8t' : 'Auto do 3.5t',
+          deliveryVehicle: vehicle === 'hr8' ? 'Auto s HR do 8t' : 'Dodávka do 1.5t',
           craneUnloading: vehicle === 'hr8' ? craneUnloading : false,
           palletsCount: (vehicle === 'hr8' && craneUnloading) ? palletsCount : 0,
           waitTime: waitTime,
@@ -127,11 +132,47 @@ const Checkout = () => {
         price_at_purchase: item.price
       }));
 
-      const { error: itemsError } = await supabase
+       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(itemsToInsert);
 
       if (itemsError) throw itemsError;
+
+      // Odoslanie e-mailovej notifikácie (ak je povolená)
+      try {
+        const itemsList = cart.map(item => `- ${item.name} (${item.quantity} ${item.unit || 'ks'} á ${item.price.toFixed(2)} €)`).join('\n');
+        const detailsSummary = `NOVÁ OBJEDNÁVKA ZO STAVEBNÍN
+
+Meno zákazníka: ${orderDetails.firstName} ${orderDetails.lastName}
+E-mail: ${orderDetails.email}
+Telefón: ${orderDetails.phone}
+Adresa: ${orderDetails.address}, ${orderDetails.zip} ${orderDetails.city}
+
+Spôsob doručenia: ${shippingMethod === 'pickup' ? 'Osobný odber v Ľubeli' : `Dovoz (${municipality === 'other' ? 'Iná obec' : municipality})`}
+Vozidlo: ${shippingMethod === 'delivery' ? (vehicle === 'hr8' ? 'Auto s HR do 8t' : 'Dodávka do 1.5t') : 'N/A'}
+Vykládka hydraulickou rukou (HR): ${shippingMethod === 'delivery' && vehicle === 'hr8' && craneUnloading ? `Áno (počet paliet: ${palletsCount})` : 'Nie'}
+Čakanie šoféra (prestoj): ${shippingMethod === 'delivery' && waitTime ? `Áno (doba: ${waitHalfHours * 30} min)` : 'Nie'}
+
+POLOŽKY:
+${itemsList}
+
+CENA TOVARU: ${totalPrice.toFixed(2)} €
+CENA DOPRAVY: ${shippingCost.toFixed(2)} €
+CELKOVÁ SUMA K ÚHRADE: ${grandTotal.toFixed(2)} €`;
+
+        const emailTo = settings.contact_email || 'kubik@stavivalubela.sk';
+        await sendEmailNotification({
+          type: 'Objednávka',
+          emailTo,
+          customerName: `${orderDetails.firstName} ${orderDetails.lastName}`,
+          customerEmail: orderDetails.email,
+          customerPhone: orderDetails.phone,
+          subject: `Nová objednávka materiálu - Celkovo: ${grandTotal.toFixed(2)} €`,
+          details: detailsSummary
+        });
+      } catch (emailErr) {
+        console.error('Failed to dispatch email notification:', emailErr);
+      }
 
       // 3. Success
       setSuccess(true);
@@ -271,8 +312,8 @@ const Checkout = () => {
                           onChange={(e) => setVehicle(e.target.value)}
                           className="w-full bg-white border border-outline/20 p-4 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
                         >
-                          <option value="car35">Auto do 3.5t (Ľahký dovoz)</option>
-                          <option value="hr8">Auto s hydraulickou rukou 8t (Ťažké palety)</option>
+                          <option value="car35">Dodávka do 1,5 tony (Ľahký dovoz)</option>
+                          <option value="hr8">Auto s hydraulickou rukou do 8 ton (Ťažké palety)</option>
                         </select>
                       </div>
                     </div>

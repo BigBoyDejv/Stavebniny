@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useSettings } from '../context/SettingsContext'
@@ -6,6 +6,10 @@ import { Editable } from '../components/Editable'
 
 const Home = () => {
   const { settings } = useSettings()
+
+  useEffect(() => {
+    document.title = "Stavebniny Ľubeľa - Všetko pre vašu stavbu"
+  }, [])
 
   const formatTitle = (titleText) => {
     if (!titleText) return ""
@@ -25,6 +29,25 @@ const Home = () => {
 
   return (
     <div className="pt-20">
+      {/* Announcement Alert Banner */}
+      {settings.hours_alert_enabled === 'true' && settings.hours_alert_message && (
+        <div className={`w-full py-5 px-8 flex items-center border-b border-outline/10 transition-all duration-300 ${
+          settings.hours_alert_type === 'warning' ? 'bg-amber-550/15 border-amber-500/30 text-amber-950' :
+          settings.hours_alert_type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-950' :
+          'bg-primary/10 border-primary/20 text-[#546200]'
+        }`}>
+          <div className="max-w-[1440px] mx-auto w-full flex items-center gap-4">
+            <span className="material-symbols-outlined text-2xl shrink-0 animate-pulse">
+              {settings.hours_alert_type === 'warning' ? 'warning' : 
+               settings.hours_alert_type === 'error' ? 'error_outline' : 'campaign'}
+            </span>
+            <p className="text-xs md:text-sm font-black uppercase tracking-wider leading-relaxed">
+              {settings.hours_alert_message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <Editable
         settingKey="home_hero_bg"

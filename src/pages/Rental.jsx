@@ -2,14 +2,19 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   CheckCircle, Info, Search, X, Calendar, ShieldCheck, 
-  HelpCircle, ChevronRight, CheckCircle2, AlertTriangle, Plus, Minus
+  HelpCircle, ChevronRight, CheckCircle2, AlertTriangle, Plus, Minus,
+  Clock, Truck
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { cn, getPlaceholderImage } from '../lib/utils'
 import { toast } from 'react-hot-toast'
 import { RENTAL_ITEMS, RENTAL_CATEGORIES, GENERAL_RENTAL_TERMS } from '../lib/rentalData'
+import { useSettings } from '../context/SettingsContext'
+import { MUNICIPALITIES, KM_RATES, ADDITIONAL_FEES, calculateShopShipping } from '../lib/shipping'
+import { sendEmailNotification } from '../lib/email'
 
 const Rental = () => {
+  const { settings } = useSettings()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState(RENTAL_CATEGORIES)
@@ -17,11 +22,50 @@ const Rental = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [bookings, setBookings] = useState([])
 
+  // Parse shipping config from settings if available
+  let activeMunicipalities = MUNICIPALITIES;
+  let activeKmRates = KM_RATES;
+  let activeFees = ADDITIONAL_FEES;
+
+  if (settings && settings.shipping_config) {
+    try {
+      const parsed = typeof settings.shipping_config === 'string'
+        ? JSON.parse(settings.shipping_config)
+        : settings.shipping_config;
+      
+      if (parsed.municipalities) activeMunicipalities = parsed.municipalities;
+      if (parsed.rates) activeKmRates = parsed.rates;
+      if (parsed.fees) {
+        activeFees = {
+          craneUnloadPerPallet: parsed.fees.crane,
+          waitTimePerHalfHour: {
+            car35: parsed.fees.wait_car35,
+            hr8: parsed.fees.wait_hr8
+          }
+        };
+      }
+    } catch (e) {
+      console.error('Error parsing shipping_config:', e);
+    }
+  }
+
   // Modal & Selection States
   const [selectedForBooking, setSelectedForBooking] = useState(null)
   const [durationMode, setDurationMode] = useState('24h') // '4h' | '24h' | '3days'
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [startTime, setStartTime] = useState('08:00')
+  const [endTime, setEndTime] = useState('08:00')
+  
+  // Delivery States for Rental
+  const [deliveryMethod, setDeliveryMethod] = useState('pickup') // 'pickup' | 'delivery'
+  const [deliveryMunicipality, setDeliveryMunicipality] = useState(activeMunicipalities[0]?.name || 'Ľubeľa')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
+  const [deliveryCity, setDeliveryCity] = useState('')
+  const [deliveryZip, setDeliveryZip] = useState('')
+  const [deliveryVehicle, setDeliveryVehicle] = useState('car35') // 'car35' | 'hr8'
+  const [deliveryDistance, setDeliveryDistance] = useState(10)
+
   const [selectedAccIds, setSelectedAccIds] = useState([]) // list of accessory ids selected
   
   const [inquiryData, setInquiryData] = useState({
@@ -30,6 +74,7 @@ const Rental = () => {
   const [sending, setSending] = useState(false)
 
   useEffect(() => {
+    document.title = "Požičovňa náradia a techniky | Stavebniny Ľubeľa"
     fetchRentals()
     fetchBookings()
   }, [])
@@ -81,7 +126,7 @@ const Rental = () => {
 
   // Calculate rental cost details based on selection
   const calculateCost = (item) => {
-    if (!item) return { rentCost: 0, accCost: 0, daysCount: 0, discount: 0, total: 0 }
+    if (!item) return { rentCost: 0, accCost: 0, daysCount: 0, discount: 0, deliveryCost: 0, total: 0 }
 
     let rentCost = 0
     let daysCount = 1
@@ -113,18 +158,39 @@ const Rental = () => {
 
     // Accessory pricing
     let accCost = 0
-    item.accessories.forEach(acc => {
-      if (selectedAccIds.includes(acc.id)) {
-        accCost += acc.price
-      }
-    })
+    if (item.accessories) {
+      item.accessories.forEach(acc => {
+        if (selectedAccIds.includes(acc.id)) {
+          accCost += acc.price
+        }
+      })
+    }
+
+    // Delivery pricing
+    const deliveryResult = deliveryMethod === 'delivery'
+      ? calculateShopShipping({
+          municipalityName: deliveryMunicipality,
+          vehicleType: deliveryVehicle,
+          customDistance: Number(deliveryDistance),
+          craneUnloading: false,
+          palletsCount: 0,
+          waitTime: false,
+          waitHalfHours: 0,
+          customMunicipalities: activeMunicipalities,
+          customKmRates: activeKmRates,
+          customFees: activeFees
+        })
+      : { basePrice: 0, cranePrice: 0, waitPrice: 0, totalShipping: 0 };
+    
+    const delCost = deliveryResult.totalShipping;
 
     return {
       rentCost,
       accCost,
       daysCount,
       discount,
-      total: rentCost + accCost
+      deliveryCost: delCost,
+      total: rentCost + accCost + delCost
     }
   }
 
@@ -144,21 +210,24 @@ const Rental = () => {
     setSending(true)
     const costDetails = calculateCost(selectedForBooking)
     const chosenAccs = selectedForBooking.accessories
-      .filter(a => selectedAccIds.includes(a.id))
-      .map(a => `${a.name} (${a.price.toFixed(2)} €)`)
-      .join(', ') || 'Žiadne'
+      ? selectedForBooking.accessories
+        .filter(a => selectedAccIds.includes(a.id))
+        .map(a => `${a.name} (${a.price.toFixed(2)} €)`)
+        .join(', ') || 'Žiadne'
+      : 'Žiadne'
 
     // Format dates for DB
     const finalStartDate = startDate
     const finalEndDate = durationMode === '4h' ? startDate : endDate
 
     const detailSummary = `PRENAJATÁ TECHNIKA: ${selectedForBooking.name}
-DOBA: ${durationMode === '4h' ? 'Do 4 hodín' : `${costDetails.daysCount} dní (${startDate} až ${endDate})`}
+DOBA: ${durationMode === '4h' ? `Do 4 hodín (${startDate} o ${startTime})` : `${costDetails.daysCount} dní (${startDate} ${startTime} až ${endDate} ${endTime})`}
 VYBRANÉ DOPLNKY: ${chosenAccs}
+SPÔSOB PREVZATIA: ${deliveryMethod === 'delivery' ? `Dovoz na adresu: ${deliveryAddress}, ${deliveryZip} ${deliveryCity} (${deliveryMunicipality === 'other' ? 'Iná obec' : deliveryMunicipality})` : 'Osobný odber v Ľubeli'}
 KAVCIE (VRATNÁ ZÁLOHA): ${selectedForBooking.deposit} €
 NÁJOMNÉ: ${costDetails.rentCost.toFixed(2)} €
 PRÍSLUŠENSTVO: ${costDetails.accCost.toFixed(2)} €
-CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v hotovosti pri prevzatí)`
+${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toFixed(2)} €\n` : ''}CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v hotovosti pri prevzatí)`
 
     try {
       // 1. Insert into rental bookings
@@ -168,6 +237,14 @@ CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v h
         customer_phone: inquiryData.phone,
         start_date: finalStartDate,
         end_date: finalEndDate,
+        start_time: startTime,
+        end_time: durationMode === '4h' ? null : endTime,
+        delivery_method: deliveryMethod,
+        delivery_address: deliveryMethod === 'delivery' ? deliveryAddress : null,
+        delivery_city: deliveryMethod === 'delivery' ? deliveryCity : null,
+        delivery_zip: deliveryMethod === 'delivery' ? deliveryZip : null,
+        delivery_municipality: deliveryMethod === 'delivery' ? (deliveryMunicipality === 'other' ? 'Iná obec' : deliveryMunicipality) : null,
+        delivery_price: deliveryMethod === 'delivery' ? costDetails.deliveryCost : 0,
         note: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
         status: 'pending'
       }])
@@ -181,12 +258,30 @@ CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v h
         message: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
       }])
 
+      // 3. Send email notification (if flag enabled)
+      const emailTo = settings.contact_email || 'kubik@stavivalubela.sk';
+      await sendEmailNotification({
+        type: 'Rezervácia',
+        emailTo: emailTo,
+        customerName: inquiryData.name,
+        customerEmail: inquiryData.email,
+        customerPhone: inquiryData.phone,
+        subject: `Nová rezervácia techniky: ${selectedForBooking.name}`,
+        details: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : '')
+      });
+
       toast.success('Rezervačná požiadavka bola úspešne odoslaná! Budeme vás kontaktovať.')
       setSelectedForBooking(null)
       setInquiryData({ name: '', email: '', phone: '', message: '' })
       setSelectedAccIds([])
       setStartDate('')
       setEndDate('')
+      setStartTime('08:00')
+      setEndTime('08:00')
+      setDeliveryMethod('pickup')
+      setDeliveryAddress('')
+      setDeliveryCity('')
+      setDeliveryZip('')
       fetchBookings()
     } catch (err) {
       toast.error('Nepodarilo sa odoslať rezerváciu: ' + err.message)
@@ -453,29 +548,197 @@ CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v h
                     </div>
 
                     {/* Date Pickers */}
-                    <div className="grid grid-cols-2 gap-4 bg-surface p-4 border border-outline/5">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-outline">Dátum od</label>
-                        <input
-                          type="date"
-                          required
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
-                        />
+                    {/* Date & Time Pickers */}
+                    <div className="space-y-3 bg-surface p-4 border border-outline/5">
+                      {durationMode === '4h' ? (
+                        <>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-outline">Dátum prenájmu</label>
+                              <input
+                                type="date"
+                                required
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-outline">Čas vyzdvihnutia</label>
+                              <input
+                                type="time"
+                                required
+                                value={startTime}
+                                onChange={(e) => setStartTime(e.target.value)}
+                                className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                          </div>
+                          <div className="text-[10px] text-primary-strong font-black uppercase tracking-wider">
+                            Doba vrátenia stroja: do 4 hodín od vyzdvihnutia
+                          </div>
+                        </>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase text-outline block">Začiatok prenájmu</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="date"
+                                required
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="flex-1 bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                              />
+                              <input
+                                type="time"
+                                required
+                                value={startTime}
+                                onChange={(e) => setStartTime(e.target.value)}
+                                className="w-24 bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold uppercase text-outline block">Koniec prenájmu</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="date"
+                                required
+                                min={startDate}
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="flex-1 bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                              />
+                              <input
+                                type="time"
+                                required
+                                value={endTime}
+                                onChange={(e) => setEndTime(e.target.value)}
+                                className="w-24 bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Step 2: Delivery Option */}
+                    <div className="pt-2 border-t border-outline/5">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-outline block mb-2">Spôsob prevzatia stroja</label>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <button
+                          type="button"
+                          onClick={() => setDeliveryMethod('pickup')}
+                          className={cn(
+                            "p-3 text-left border flex flex-col justify-between transition-all select-none",
+                            deliveryMethod === 'pickup' 
+                              ? "border-primary bg-primary/5 text-on-surface" 
+                              : "border-outline/10 bg-white text-on-surface hover:bg-surface"
+                          )}
+                        >
+                          <span className="font-bold text-[9px] uppercase tracking-wider block font-sans">Osobný odber</span>
+                          <span className="font-black text-xs text-emerald-600 mt-1 font-sans">ZADARMO</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeliveryMethod('delivery')}
+                          className={cn(
+                            "p-3 text-left border flex flex-col justify-between transition-all select-none",
+                            deliveryMethod === 'delivery' 
+                              ? "border-primary bg-primary/5 text-on-surface" 
+                              : "border-outline/10 bg-white text-on-surface hover:bg-surface"
+                          )}
+                        >
+                          <span className="font-bold text-[9px] uppercase tracking-wider block font-sans">Dovoz na adresu</span>
+                          <span className="font-black text-xs mt-1 font-sans">Podľa cenníka</span>
+                        </button>
                       </div>
-                      
-                      {durationMode !== '4h' && (
-                        <div className="space-y-1 animate-in fade-in duration-200">
-                          <label className="text-[10px] font-bold uppercase text-outline">Dátum do</label>
-                          <input
-                            type="date"
-                            required
-                            min={startDate}
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
-                          />
+
+                      {deliveryMethod === 'delivery' && (
+                        <div className="bg-surface border border-outline/5 p-4 space-y-4 animate-in fade-in duration-200">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold uppercase text-outline">Obec doručenia</label>
+                              <select
+                                value={deliveryMunicipality}
+                                onChange={(e) => setDeliveryMunicipality(e.target.value)}
+                                className="w-full bg-white border border-outline/20 p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
+                              >
+                                {activeMunicipalities.map(m => (
+                                  <option key={m.name} value={m.name}>{m.name}</option>
+                                ))}
+                                <option value="other">Iná obec (km sadzba)</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold uppercase text-outline">Kategória dovozu</label>
+                              <select
+                                value={deliveryVehicle}
+                                onChange={(e) => setDeliveryVehicle(e.target.value)}
+                                className="w-full bg-white border border-outline/20 p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
+                              >
+                                <option value="car35">Dodávka do 1,5t (Ľahké dovozy)</option>
+                                <option value="hr8">Auto s HR do 8t (Ťažká technika)</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {deliveryMunicipality === 'other' && (
+                            <div className="space-y-2 animate-in fade-in duration-200">
+                              <label className="text-[9px] font-bold uppercase text-outline block">
+                                Celková vzdialenosť (km) — tam aj späť
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="200"
+                                  value={deliveryDistance}
+                                  onChange={(e) => setDeliveryDistance(Math.max(1, Number(e.target.value)))}
+                                  className="bg-white border border-outline/20 p-2 text-xs font-bold text-on-surface w-20 outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <span className="text-[10px] text-outline font-semibold">
+                                  Sadzba: {activeKmRates[deliveryVehicle].toFixed(2)} € / km (Spolu: {(deliveryDistance * activeKmRates[deliveryVehicle]).toFixed(2)} €)
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="space-y-2 pt-2 border-t border-outline/5">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-bold uppercase text-outline">Ulica a číslo domu</label>
+                              <input
+                                required
+                                value={deliveryAddress}
+                                onChange={e => setDeliveryAddress(e.target.value)}
+                                className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
+                                placeholder="Ulica 123"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-bold uppercase text-outline">Mesto / Obec</label>
+                                <input
+                                  required
+                                  value={deliveryCity}
+                                  onChange={e => setDeliveryCity(e.target.value)}
+                                  className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
+                                  placeholder="Mesto"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-bold uppercase text-outline">PSČ</label>
+                                <input
+                                  required
+                                  value={deliveryZip}
+                                  onChange={e => setDeliveryZip(e.target.value)}
+                                  className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
+                                  placeholder="032 14"
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -585,7 +848,13 @@ CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v h
                     {cost.discount > 0 && (
                       <div className="flex justify-between text-xs text-emerald-600 font-bold">
                         <span>Dlhodobá zľava ({cost.discount}%):</span>
-                        <span>-{(cost.rentCost * (cost.discount / 90)).toFixed(2)} €</span>
+                        <span>-{(cost.rentCost * (cost.discount / 100)).toFixed(2)} €</span>
+                      </div>
+                    )}
+                    {deliveryMethod === 'delivery' && (
+                      <div className="flex justify-between text-xs text-on-surface-variant font-medium">
+                        <span>Dovoz a odvoz stroja:</span>
+                        <span className="font-bold text-on-surface">{cost.deliveryCost.toFixed(2)} €</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs text-on-surface-variant font-medium pt-2 border-t border-outline/5">
@@ -594,7 +863,7 @@ CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v h
                     </div>
                     <div className="flex justify-between items-baseline pt-2 border-t-2 border-primary/20">
                       <span className="text-xs font-black uppercase">Predbežná cena spolu:</span>
-                      <span className="text-2xl font-black text-primary-strong">
+                      <span className="text-2xl font-black text-primary-strong font-sans">
                         {cost.total.toFixed(2)} €
                       </span>
                     </div>
