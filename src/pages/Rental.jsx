@@ -51,12 +51,99 @@ const Rental = () => {
 
   // Modal & Selection States
   const [selectedForBooking, setSelectedForBooking] = useState(null)
-  const [durationMode, setDurationMode] = useState('24h') // '4h' | '24h' | '3days'
+  const [durationMode, setDurationMode] = useState('24h') // '4h' | '24h'
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [startTime, setStartTime] = useState('08:00')
   const [endTime, setEndTime] = useState('08:00')
   
+  // Calendar states
+  const [calMonth, setCalMonth] = useState(new Date().getMonth())
+  const [calYear, setCalYear] = useState(new Date().getFullYear())
+  const [hoveredDate, setHoveredDate] = useState(null)
+
+  // Helper to check if shop is closed
+  const isShopClosed = () => {
+    if (settings.hours_alert_enabled !== 'true') return false
+    const msg = (settings.hours_alert_message || '').toLowerCase()
+    return settings.hours_alert_type === 'error' || 
+           msg.includes('zatvorené') || 
+           msg.includes('zatvorene') || 
+           msg.includes('dovolenka') || 
+           msg.includes('neotvorené') || 
+           msg.includes('neotvorene')
+  }
+
+  // Calendar Helpers
+  const getDaysInMonth = (month, year) => {
+    return new Date(year, month + 1, 0).getDate()
+  }
+
+  const getStartDayOfWeek = (month, year) => {
+    let day = new Date(year, month, 1).getDay()
+    return day === 0 ? 6 : day - 1 // Convert to Mon-Sun (0-6)
+  }
+
+  const isDateBooked = (itemId, dateStr) => {
+    return false
+  }
+
+  const hasDateConflict = () => {
+    return false
+  }
+
+  const handleDateClick = (dateStr) => {
+    if (durationMode === '4h') {
+      if (isDateBooked(selectedForBooking?.id, dateStr)) {
+        toast.error('Tento deň je už obsadený.')
+        return
+      }
+      setStartDate(dateStr)
+      setEndDate(dateStr)
+      return
+    }
+
+    if (!startDate || (startDate && endDate)) {
+      if (isDateBooked(selectedForBooking?.id, dateStr)) {
+        toast.error('Tento deň je už obsadený.')
+        return
+      }
+      setStartDate(dateStr)
+      setEndDate('')
+    } else {
+      if (dateStr < startDate) {
+        if (isDateBooked(selectedForBooking?.id, dateStr)) {
+          toast.error('Tento deň je už obsadený.')
+          return
+        }
+        setStartDate(dateStr)
+        setEndDate('')
+      } else if (dateStr === startDate) {
+        setEndDate(dateStr)
+      } else {
+        let current = new Date(startDate)
+        const target = new Date(dateStr)
+        let hasBookingOverlap = false
+
+        while (current <= target) {
+          const checkStr = current.toISOString().split('T')[0]
+          if (isDateBooked(selectedForBooking?.id, checkStr)) {
+            hasBookingOverlap = true
+            break
+          }
+          current.setDate(current.getDate() + 1)
+        }
+
+        if (hasBookingOverlap) {
+          toast.error('Zvolené obdobie prekrýva existujúcu rezerváciu!')
+          return
+        }
+
+        setEndDate(dateStr)
+      }
+    }
+  }
+
   // Delivery States for Rental
   const [deliveryMethod, setDeliveryMethod] = useState('pickup') // 'pickup' | 'delivery'
   const [deliveryMunicipality, setDeliveryMunicipality] = useState(activeMunicipalities[0]?.name || 'Ľubeľa')
@@ -116,12 +203,7 @@ const Rental = () => {
 
   // Verify if a tool is reserved for today
   const isItemReservedToday = (itemId) => {
-    const today = new Date().toISOString().split('T')[0]
-    return bookings.some(booking => 
-      booking.rental_item_id === itemId && 
-      booking.start_date <= today && 
-      booking.end_date >= today
-    )
+    return false
   }
 
   // Calculate rental cost details based on selection
@@ -400,17 +482,8 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     
-                    {/* Status Badge */}
+                    {/* Category Badge */}
                     <div className="absolute top-4 left-4 flex flex-col gap-2">
-                      {reserved ? (
-                        <span className="bg-amber-600 text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">
-                          Dnes rezervovaný
-                        </span>
-                      ) : (
-                        <span className="bg-emerald-600 text-white px-2 py-0.5 text-[8px] font-black uppercase tracking-wider">
-                          Dostupný
-                        </span>
-                      )}
                       <span className="bg-white/95 text-on-surface border border-outline/10 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider">
                         {item.category}
                       </span>
@@ -508,63 +581,143 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
                 </h3>
 
                 <form onSubmit={handleInquirySubmit} className="space-y-6 flex-grow flex flex-col justify-between">
-                  {/* Step 1: Duration settings */}
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black uppercase tracking-wider text-outline block">Doba prenájmu</label>
-                      
-                      <div className="grid grid-cols-3 bg-surface p-1 border border-outline/10">
-                        <button
-                          type="button"
-                          onClick={() => handleDurationTabChange('4h')}
-                          className={cn(
-                            "py-2 text-[10px] font-black uppercase transition-all text-center",
-                            durationMode === '4h' ? "bg-[#2d2f2b] text-primary" : "text-outline hover:text-on-surface"
-                          )}
-                        >
-                          Do 4 hodín
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDurationTabChange('24h')}
-                          className={cn(
-                            "py-2 text-[10px] font-black uppercase transition-all text-center",
-                            durationMode === '24h' ? "bg-[#2d2f2b] text-primary" : "text-outline hover:text-on-surface"
-                          )}
-                        >
-                          1 - 2 dni
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDurationTabChange('3days')}
-                          className={cn(
-                            "py-2 text-[10px] font-black uppercase transition-all text-center",
-                            durationMode === '3days' ? "bg-[#2d2f2b] text-primary" : "text-outline hover:text-on-surface"
-                          )}
-                        >
-                          3+ dni (-10%)
-                        </button>
-                      </div>
+                  {isShopClosed() ? (
+                    <div className="bg-error/10 border-l-4 border-error p-6 text-xs font-bold uppercase tracking-wider text-error leading-relaxed my-auto">
+                      ⚠️ REZERVÁCIA TECHNIKY JE DOČASNE POZASTAVENÁ
+                      <p className="mt-2 text-on-surface normal-case font-medium">{settings.hours_alert_message}</p>
                     </div>
+                  ) : (
+                    <>
+                      {/* Step 1: Duration settings */}
+                      <div className="space-y-4 font-sans">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-outline block">Doba prenájmu</label>
+                          <div className="grid grid-cols-2 bg-surface p-1 border border-outline/10">
+                            <button
+                              type="button"
+                              onClick={() => handleDurationTabChange('4h')}
+                              className={cn(
+                                "py-2 text-[10px] font-black uppercase transition-all text-center",
+                                durationMode === '4h' ? "bg-[#2d2f2b] text-primary" : "text-outline hover:text-on-surface"
+                              )}
+                            >
+                              Do 4 hodín
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDurationTabChange('24h')}
+                              className={cn(
+                                "py-2 text-[10px] font-black uppercase transition-all text-center",
+                                durationMode === '24h' ? "bg-[#2d2f2b] text-primary" : "text-outline hover:text-on-surface"
+                              )}
+                            >
+                              Celý deň / Viac dní
+                            </button>
+                          </div>
+                        </div>
 
-                    {/* Date Pickers */}
-                    {/* Date & Time Pickers */}
-                    <div className="space-y-3 bg-surface p-4 border border-outline/5">
-                      {durationMode === '4h' ? (
-                        <>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase text-outline">Dátum prenájmu</label>
-                              <input
-                                type="date"
-                                required
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
-                              />
+                        {/* Calendar Date Picker */}
+                        <div className="space-y-3 bg-surface p-4 border border-outline/5">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-bold uppercase text-outline">
+                              Výber dátumu:
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (calMonth === 0) {
+                                    setCalMonth(11)
+                                    setCalYear(calYear - 1)
+                                  } else {
+                                    setCalMonth(calMonth - 1)
+                                  }
+                                }}
+                                className="p-1 hover:bg-outline/10 text-on-surface transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-sm">chevron_left</span>
+                              </button>
+                              <span className="text-xs font-black uppercase tracking-wider">
+                                {new Date(calYear, calMonth).toLocaleString('sk-SK', { month: 'long', year: 'numeric' })}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (calMonth === 11) {
+                                    setCalMonth(0)
+                                    setCalYear(calYear + 1)
+                                  } else {
+                                    setCalMonth(calMonth + 1)
+                                  }
+                                }}
+                                className="p-1 hover:bg-outline/10 text-on-surface transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-sm">chevron_right</span>
+                              </button>
                             </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold uppercase text-outline">Čas vyzdvihnutia</label>
+                          </div>
+
+                          {/* Calendar Grid */}
+                          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold mb-1 border-b border-outline/5 pb-1">
+                            <div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div><div>So</div><div>Ne</div>
+                          </div>
+
+                          <div className="grid grid-cols-7 gap-1">
+                            {/* Empty padding days */}
+                            {Array.from({ length: getStartDayOfWeek(calMonth, calYear) }).map((_, idx) => (
+                              <div key={`empty-${idx}`} className="p-2"></div>
+                            ))}
+
+                            {/* Month Days */}
+                            {Array.from({ length: getDaysInMonth(calMonth, calYear) }).map((_, idx) => {
+                              const dayNum = idx + 1
+                              const dateObj = new Date(calYear, calMonth, dayNum)
+                              const year = dateObj.getFullYear()
+                              const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+                              const day = String(dateObj.getDate()).padStart(2, '0')
+                              const dateStr = `${year}-${month}-${day}`
+                              
+                              const todayStr = new Date().toISOString().split('T')[0]
+                              const isPast = dateStr < todayStr
+                              const isBooked = isDateBooked(selectedForBooking?.id, dateStr)
+                              
+                              const isSelected = startDate === dateStr || endDate === dateStr
+                              const isInRange = startDate && endDate && dateStr > startDate && dateStr < endDate
+                              
+                              return (
+                                <button
+                                  key={`day-${dayNum}`}
+                                  type="button"
+                                  disabled={isPast || isBooked}
+                                  onClick={() => handleDateClick(dateStr)}
+                                  onMouseEnter={() => setHoveredDate(dateStr)}
+                                  className={cn(
+                                    "py-2 text-[11px] font-black transition-all rounded-none relative border border-transparent",
+                                    isPast 
+                                      ? "text-outline/25 cursor-not-allowed bg-transparent" 
+                                      : isBooked 
+                                      ? "bg-error/15 text-error-strong border-error/20 cursor-not-allowed" 
+                                      : isSelected
+                                      ? "bg-primary text-on-primary font-black shadow-sm"
+                                      : isInRange
+                                      ? "bg-primary/20 text-[#546200]"
+                                      : "bg-white hover:bg-primary/10 text-on-surface border-outline/5"
+                                  )}
+                                  title={isBooked ? "Obsadené" : isPast ? "Minulý dátum" : "Voľné"}
+                                >
+                                  {dayNum}
+                                  {isBooked && (
+                                    <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-error rounded-full"></span>
+                                  )}
+                                </button>
+                              )
+                            })}
+                          </div>
+
+                          {/* Time Pickers */}
+                          <div className="grid grid-cols-2 gap-4 mt-4 pt-3 border-t border-outline/5">
+                            <div>
+                              <label className="text-[9px] font-bold uppercase text-outline block mb-1">Čas vyzdvihnutia</label>
                               <input
                                 type="time"
                                 required
@@ -573,309 +726,292 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
                                 className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
                               />
                             </div>
+                            {durationMode !== '4h' && (
+                              <div>
+                                <label className="text-[9px] font-bold uppercase text-outline block mb-1">Čas vrátenia</label>
+                                <input
+                                  type="time"
+                                  required
+                                  value={endTime}
+                                  onChange={(e) => setEndTime(e.target.value)}
+                                  className="w-full bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
+                                />
+                              </div>
+                            )}
                           </div>
-                          <div className="text-[10px] text-primary-strong font-black uppercase tracking-wider">
-                            Doba vrátenia stroja: do 4 hodín od vyzdvihnutia
-                          </div>
-                        </>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase text-outline block">Začiatok prenájmu</label>
-                            <div className="flex gap-2">
-                              <input
-                                type="date"
-                                required
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="flex-1 bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
-                              />
-                              <input
-                                type="time"
-                                required
-                                value={startTime}
-                                onChange={(e) => setStartTime(e.target.value)}
-                                className="w-24 bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase text-outline block">Koniec prenájmu</label>
-                            <div className="flex gap-2">
-                              <input
-                                type="date"
-                                required
-                                min={startDate}
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="flex-1 bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
-                              />
-                              <input
-                                type="time"
-                                required
-                                value={endTime}
-                                onChange={(e) => setEndTime(e.target.value)}
-                                className="w-24 bg-white border border-outline/20 p-2 text-xs font-bold outline-none focus:ring-1 focus:ring-primary"
-                              />
-                            </div>
+
+                          {/* Selection Summary */}
+                          <div className="text-[10px] font-bold uppercase tracking-wider mt-2 text-primary-strong">
+                            {startDate && !endDate && (
+                              <span>Vyberte koniec prenájmu...</span>
+                            )}
+                            {startDate && endDate && (
+                              <span>
+                                Zvolené: {new Date(startDate).toLocaleDateString('sk-SK')} 
+                                {durationMode === '4h' 
+                                  ? ` (Na 4 hodiny o ${startTime})` 
+                                  : ` až ${new Date(endDate).toLocaleDateString('sk-SK')} (Počet dní: ${calculateCost(selectedForBooking).daysCount})`}
+                              </span>
+                            )}
                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Step 2: Delivery Option */}
-                    <div className="pt-2 border-t border-outline/5">
-                      <label className="text-[10px] font-black uppercase tracking-wider text-outline block mb-2">Spôsob prevzatia stroja</label>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <button
-                          type="button"
-                          onClick={() => setDeliveryMethod('pickup')}
-                          className={cn(
-                            "p-3 text-left border flex flex-col justify-between transition-all select-none",
-                            deliveryMethod === 'pickup' 
-                              ? "border-primary bg-primary/5 text-on-surface" 
-                              : "border-outline/10 bg-white text-on-surface hover:bg-surface"
-                          )}
-                        >
-                          <span className="font-bold text-[9px] uppercase tracking-wider block font-sans">Osobný odber</span>
-                          <span className="font-black text-xs text-emerald-600 mt-1 font-sans">ZADARMO</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeliveryMethod('delivery')}
-                          className={cn(
-                            "p-3 text-left border flex flex-col justify-between transition-all select-none",
-                            deliveryMethod === 'delivery' 
-                              ? "border-primary bg-primary/5 text-on-surface" 
-                              : "border-outline/10 bg-white text-on-surface hover:bg-surface"
-                          )}
-                        >
-                          <span className="font-bold text-[9px] uppercase tracking-wider block font-sans">Dovoz na adresu</span>
-                          <span className="font-black text-xs mt-1 font-sans">Podľa cenníka</span>
-                        </button>
                       </div>
 
-                      {deliveryMethod === 'delivery' && (
-                        <div className="bg-surface border border-outline/5 p-4 space-y-4 animate-in fade-in duration-200">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-bold uppercase text-outline">Obec doručenia</label>
-                              <select
-                                value={deliveryMunicipality}
-                                onChange={(e) => setDeliveryMunicipality(e.target.value)}
-                                className="w-full bg-white border border-outline/20 p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
-                              >
-                                {activeMunicipalities.map(m => (
-                                  <option key={m.name} value={m.name}>{m.name}</option>
-                                ))}
-                                <option value="other">Iná obec (km sadzba)</option>
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-bold uppercase text-outline">Kategória dovozu</label>
-                              <select
-                                value={deliveryVehicle}
-                                onChange={(e) => setDeliveryVehicle(e.target.value)}
-                                className="w-full bg-white border border-outline/20 p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
-                              >
-                                <option value="car35">Dodávka do 1,5t (Ľahké dovozy)</option>
-                                <option value="hr8">Auto s HR do 8t (Ťažká technika)</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          {deliveryMunicipality === 'other' && (
-                            <div className="space-y-2 animate-in fade-in duration-200">
-                              <label className="text-[9px] font-bold uppercase text-outline block">
-                                Celková vzdialenosť (km) — tam aj späť
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="200"
-                                  value={deliveryDistance}
-                                  onChange={(e) => setDeliveryDistance(Math.max(1, Number(e.target.value)))}
-                                  className="bg-white border border-outline/20 p-2 text-xs font-bold text-on-surface w-20 outline-none focus:ring-1 focus:ring-primary"
-                                />
-                                <span className="text-[10px] text-outline font-semibold">
-                                  Sadzba: {activeKmRates[deliveryVehicle].toFixed(2)} € / km (Spolu: {(deliveryDistance * activeKmRates[deliveryVehicle]).toFixed(2)} €)
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="space-y-2 pt-2 border-t border-outline/5">
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-bold uppercase text-outline">Ulica a číslo domu</label>
-                              <input
-                                required
-                                value={deliveryAddress}
-                                onChange={e => setDeliveryAddress(e.target.value)}
-                                className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
-                                placeholder="Ulica 123"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-bold uppercase text-outline">Mesto / Obec</label>
-                                <input
-                                  required
-                                  value={deliveryCity}
-                                  onChange={e => setDeliveryCity(e.target.value)}
-                                  className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
-                                  placeholder="Mesto"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-bold uppercase text-outline">PSČ</label>
-                                <input
-                                  required
-                                  value={deliveryZip}
-                                  onChange={e => setDeliveryZip(e.target.value)}
-                                  className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
-                                  placeholder="032 14"
-                                />
-                              </div>
-                            </div>
-                          </div>
+                      {/* Step 2: Delivery Option */}
+                      <div className="pt-2 border-t border-outline/5">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-outline block mb-2">Spôsob prevzatia stroja</label>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryMethod('pickup')}
+                            className={cn(
+                              "p-3 text-left border flex flex-col justify-between transition-all select-none",
+                              deliveryMethod === 'pickup' 
+                                ? "border-primary bg-primary/5 text-on-surface" 
+                                : "border-outline/10 bg-white text-on-surface hover:bg-surface"
+                            )}
+                          >
+                            <span className="font-bold text-[9px] uppercase tracking-wider block font-sans">Osobný odber</span>
+                            <span className="font-black text-xs text-emerald-600 mt-1 font-sans">ZADARMO</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeliveryMethod('delivery')}
+                            className={cn(
+                              "p-3 text-left border flex flex-col justify-between transition-all select-none",
+                              deliveryMethod === 'delivery' 
+                                ? "border-primary bg-primary/5 text-on-surface" 
+                                : "border-outline/10 bg-white text-on-surface hover:bg-surface"
+                            )}
+                          >
+                            <span className="font-bold text-[9px] uppercase tracking-wider block font-sans">Dovoz na adresu</span>
+                            <span className="font-black text-xs mt-1 font-sans">Podľa cenníka</span>
+                          </button>
                         </div>
-                      )}
-                    </div>
 
-                    {/* Accessory options if present */}
-                    {selectedForBooking.accessories && selectedForBooking.accessories.length > 0 && (
-                      <div className="pt-2">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-outline block mb-2">Odporúčame tiež</label>
-                        <div className="space-y-2">
-                          {selectedForBooking.accessories.map(acc => {
-                            const isChecked = selectedAccIds.includes(acc.id)
-                            return (
-                              <label
-                                key={acc.id}
-                                className={cn(
-                                  "flex items-center justify-between p-3 border cursor-pointer select-none transition-colors",
-                                  isChecked ? "bg-primary/5 border-primary" : "bg-white border-outline/10 hover:bg-surface"
-                                )}
-                              >
-                                <div className="flex items-center gap-3">
+                        {deliveryMethod === 'delivery' && (
+                          <div className="bg-surface border border-outline/5 p-4 space-y-4 animate-in fade-in duration-200">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-bold uppercase text-outline">Obec doručenia</label>
+                                <select
+                                  value={deliveryMunicipality}
+                                  onChange={(e) => setDeliveryMunicipality(e.target.value)}
+                                  className="w-full bg-white border border-outline/20 p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                  {activeMunicipalities.map(m => (
+                                    <option key={m.name} value={m.name}>{m.name}</option>
+                                  ))}
+                                  <option value="other">Iná obec (km sadzba)</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-bold uppercase text-outline">Kategória dovozu</label>
+                                <select
+                                  value={deliveryVehicle}
+                                  onChange={(e) => setDeliveryVehicle(e.target.value)}
+                                  className="w-full bg-white border border-outline/20 p-2 text-xs font-bold uppercase outline-none focus:ring-1 focus:ring-primary"
+                                >
+                                  <option value="car35">Dodávka do 1,5t (Ľahké dovozy)</option>
+                                  <option value="hr8">Auto s HR do 8t (Ťažká technika)</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {deliveryMunicipality === 'other' && (
+                              <div className="space-y-2 animate-in fade-in duration-200">
+                                <label className="text-[9px] font-bold uppercase text-outline block">
+                                  Celková vzdialenosť (km) — tam aj späť
+                                </label>
+                                <div className="flex items-center gap-2">
                                   <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedAccIds([...selectedAccIds, acc.id])
-                                      } else {
-                                        setSelectedAccIds(selectedAccIds.filter(id => id !== acc.id))
-                                      }
-                                    }}
-                                    className="w-4 h-4 text-primary bg-zinc-100 border-zinc-300 focus:ring-primary rounded-none"
+                                    type="number"
+                                    min="1"
+                                    max="200"
+                                    value={deliveryDistance}
+                                    onChange={(e) => setDeliveryDistance(Math.max(1, Number(e.target.value)))}
+                                    className="bg-white border border-outline/20 p-2 text-xs font-bold text-on-surface w-20 outline-none focus:ring-1 focus:ring-primary"
                                   />
-                                  <span className="text-xs font-bold text-on-surface">{acc.name}</span>
+                                  <span className="text-[10px] text-outline font-semibold">
+                                    Sadzba: {activeKmRates[deliveryVehicle].toFixed(2)} € / km (Spolu: {(deliveryDistance * activeKmRates[deliveryVehicle]).toFixed(2)} €)
+                                  </span>
                                 </div>
-                                <span className="text-xs font-black shrink-0 ml-4">
-                                  +{acc.price.toFixed(2)} € {acc.flat ? '' : '/ 1mm'}
-                                </span>
-                              </label>
-                            )
-                          })}
+                              </div>
+                            )}
+
+                            <div className="space-y-2 pt-2 border-t border-outline/5">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-bold uppercase text-outline">Ulica a číslo domu</label>
+                                <input
+                                  required
+                                  value={deliveryAddress}
+                                  onChange={e => setDeliveryAddress(e.target.value)}
+                                  className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
+                                  placeholder="Ulica 123"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-bold uppercase text-outline">Mesto / Obec</label>
+                                  <input
+                                    required
+                                    value={deliveryCity}
+                                    onChange={e => setDeliveryCity(e.target.value)}
+                                    className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
+                                    placeholder="Mesto"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-bold uppercase text-outline">PSČ</label>
+                                  <input
+                                    required
+                                    value={deliveryZip}
+                                    onChange={e => setDeliveryZip(e.target.value)}
+                                    className="w-full bg-white border border-outline/20 p-2 text-xs font-medium outline-none focus:ring-1 focus:ring-primary"
+                                    placeholder="032 14"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Accessory options if present */}
+                      {selectedForBooking.accessories && selectedForBooking.accessories.length > 0 && (
+                        <div className="pt-2">
+                          <label className="text-[10px] font-black uppercase tracking-wider text-outline block mb-2">Odporúčame tiež</label>
+                          <div className="space-y-2">
+                            {selectedForBooking.accessories.map(acc => {
+                              const isChecked = selectedAccIds.includes(acc.id)
+                              return (
+                                <label
+                                  key={acc.id}
+                                  className={cn(
+                                    "flex items-center justify-between p-3 border cursor-pointer select-none transition-colors",
+                                    isChecked ? "bg-primary/5 border-primary" : "bg-white border-outline/10 hover:bg-surface"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedAccIds([...selectedAccIds, acc.id])
+                                        } else {
+                                          setSelectedAccIds(selectedAccIds.filter(id => id !== acc.id))
+                                        }
+                                      }}
+                                      className="w-4 h-4 text-primary bg-zinc-100 border-zinc-300 focus:ring-primary rounded-none"
+                                    />
+                                    <span className="text-xs font-bold text-on-surface">{acc.name}</span>
+                                  </div>
+                                  <span className="text-xs font-black shrink-0 ml-4">
+                                    +{acc.price.toFixed(2)} € {acc.flat ? '' : '/ 1mm'}
+                                  </span>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    
+
+                    {/* Customer detail form fields */}
+                    <div className="space-y-4 pt-4 border-t border-outline/5">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-outline">Meno a priezvisko</label>
+                          <input
+                            required
+                            value={inquiryData.name}
+                            onChange={e => setInquiryData({ ...inquiryData, name: e.target.value })}
+                            className="w-full bg-surface p-3 text-xs font-bold border-none focus:ring-1 focus:ring-primary outline-none"
+                            placeholder="Meno priezvisko"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold uppercase text-outline">Telefónne číslo</label>
+                          <input
+                            required
+                            type="tel"
+                            value={inquiryData.phone}
+                            onChange={e => setInquiryData({ ...inquiryData, phone: e.target.value })}
+                            className="w-full bg-surface p-3 text-xs font-bold border-none focus:ring-1 focus:ring-primary outline-none"
+                            placeholder="+421 ..."
+                          />
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Customer detail form fields */}
-                  <div className="space-y-4 pt-4 border-t border-outline/5">
-                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-outline">Meno a priezvisko</label>
+                        <label className="text-[10px] font-bold uppercase text-outline">E-mailová adresa</label>
                         <input
                           required
-                          value={inquiryData.name}
-                          onChange={e => setInquiryData({ ...inquiryData, name: e.target.value })}
+                          type="email"
+                          value={inquiryData.email}
+                          onChange={e => setInquiryData({ ...inquiryData, email: e.target.value })}
                           className="w-full bg-surface p-3 text-xs font-bold border-none focus:ring-1 focus:ring-primary outline-none"
-                          placeholder="Meno priezvisko"
+                          placeholder="email@priklad.sk"
                         />
                       </div>
+
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold uppercase text-outline">Telefónne číslo</label>
-                        <input
-                          required
-                          type="tel"
-                          value={inquiryData.phone}
-                          onChange={e => setInquiryData({ ...inquiryData, phone: e.target.value })}
-                          className="w-full bg-surface p-3 text-xs font-bold border-none focus:ring-1 focus:ring-primary outline-none"
-                          placeholder="+421 ..."
+                        <label className="text-[10px] font-bold uppercase text-outline">Doplňujúca poznámka</label>
+                        <textarea
+                          value={inquiryData.message}
+                          onChange={e => setInquiryData({ ...inquiryData, message: e.target.value })}
+                          className="w-full bg-surface p-3 text-xs font-medium border-none focus:ring-1 focus:ring-primary outline-none min-h-[60px] resize-none"
+                          placeholder="Napr. približný čas prevzatia stroja..."
                         />
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase text-outline">E-mailová adresa</label>
-                      <input
-                        required
-                        type="email"
-                        value={inquiryData.email}
-                        onChange={e => setInquiryData({ ...inquiryData, email: e.target.value })}
-                        className="w-full bg-surface p-3 text-xs font-bold border-none focus:ring-1 focus:ring-primary outline-none"
-                        placeholder="email@priklad.sk"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase text-outline">Doplňujúca poznámka</label>
-                      <textarea
-                        value={inquiryData.message}
-                        onChange={e => setInquiryData({ ...inquiryData, message: e.target.value })}
-                        className="w-full bg-surface p-3 text-xs font-medium border-none focus:ring-1 focus:ring-primary outline-none min-h-[60px] resize-none"
-                        placeholder="Napr. približný čas prevzatia stroja..."
-                      />
-                    </div>
-                  </div>
-
-                  {/* Calculations & Pricing summary */}
-                  <div className="bg-[#fdfdf7] p-5 border border-primary/20 space-y-3 mt-6">
-                    <div className="flex justify-between text-xs text-on-surface-variant font-medium">
-                      <span>Nájomné ({durationMode === '4h' ? 'Do 4 hod' : `${cost.daysCount} dní`}):</span>
-                      <span className="font-bold text-on-surface">{cost.rentCost.toFixed(2)} €</span>
-                    </div>
-                    {cost.accCost > 0 && (
+                    {/* Calculations & Pricing summary */}
+                    <div className="bg-[#fdfdf7] p-5 border border-primary/20 space-y-3 mt-6">
                       <div className="flex justify-between text-xs text-on-surface-variant font-medium">
-                        <span>Príslušenstvo / Spotrebný materiál:</span>
-                        <span className="font-bold text-on-surface">{cost.accCost.toFixed(2)} €</span>
+                        <span>Nájomné ({durationMode === '4h' ? 'Do 4 hod' : `${cost.daysCount} dní`}):</span>
+                        <span className="font-bold text-on-surface">{cost.rentCost.toFixed(2)} €</span>
                       </div>
-                    )}
-                    {cost.discount > 0 && (
-                      <div className="flex justify-between text-xs text-emerald-600 font-bold">
-                        <span>Dlhodobá zľava ({cost.discount}%):</span>
-                        <span>-{(cost.rentCost * (cost.discount / 100)).toFixed(2)} €</span>
+                      {cost.accCost > 0 && (
+                        <div className="flex justify-between text-xs text-on-surface-variant font-medium">
+                          <span>Príslušenstvo / Spotrebný materiál:</span>
+                          <span className="font-bold text-on-surface">{cost.accCost.toFixed(2)} €</span>
+                        </div>
+                      )}
+                      {cost.discount > 0 && (
+                        <div className="flex justify-between text-xs text-emerald-600 font-bold">
+                          <span>Dlhodobá zľava ({cost.discount}%):</span>
+                          <span>-{(cost.rentCost * (cost.discount / 100)).toFixed(2)} €</span>
+                        </div>
+                      )}
+                      {deliveryMethod === 'delivery' && (
+                        <div className="flex justify-between text-xs text-on-surface-variant font-medium">
+                          <span>Dovoz a odvoz stroja:</span>
+                          <span className="font-bold text-on-surface">{cost.deliveryCost.toFixed(2)} €</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-xs text-on-surface-variant font-medium pt-2 border-t border-outline/5">
+                        <span>Vratná záloha (kaucia):</span>
+                        <span className="font-black text-on-surface">{selectedForBooking.deposit} €</span>
                       </div>
-                    )}
-                    {deliveryMethod === 'delivery' && (
-                      <div className="flex justify-between text-xs text-on-surface-variant font-medium">
-                        <span>Dovoz a odvoz stroja:</span>
-                        <span className="font-bold text-on-surface">{cost.deliveryCost.toFixed(2)} €</span>
+                      <div className="flex justify-between items-baseline pt-2 border-t-2 border-primary/20">
+                        <span className="text-xs font-black uppercase">Predbežná cena spolu:</span>
+                        <span className="text-2xl font-black text-primary-strong font-sans">
+                          {cost.total.toFixed(2)} €
+                        </span>
                       </div>
-                    )}
-                    <div className="flex justify-between text-xs text-on-surface-variant font-medium pt-2 border-t border-outline/5">
-                      <span>Vratná záloha (kaucia):</span>
-                      <span className="font-black text-on-surface">{selectedForBooking.deposit} €</span>
                     </div>
-                    <div className="flex justify-between items-baseline pt-2 border-t-2 border-primary/20">
-                      <span className="text-xs font-black uppercase">Predbežná cena spolu:</span>
-                      <span className="text-2xl font-black text-primary-strong font-sans">
-                        {cost.total.toFixed(2)} €
-                      </span>
-                    </div>
-                  </div>
 
-                  <button
-                    type="submit"
-                    disabled={sending}
-                    className="w-full bg-[#2d2f2b] text-primary py-5 font-black uppercase tracking-[0.2em] text-xs hover:bg-primary hover:text-on-primary transition-all disabled:opacity-50 active:scale-[0.98] mt-4"
-                  >
-                    {sending ? 'ODOSIELAM...' : 'Potvrdiť rezerváciu prenájmu'}
-                  </button>
+                    <button
+                      type="submit"
+                      disabled={sending || hasDateConflict()}
+                      className="w-full bg-[#2d2f2b] text-primary py-5 font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                    >
+                      {sending ? 'ODOSIELAM...' : 'Potvrdiť rezerváciu prenájmu'}
+                    </button>
+                    </>
+                  )}
                 </form>
               </div>
 

@@ -53,14 +53,17 @@ const Navbar = () => {
           <div className="flex items-center gap-4 md:border-r border-[#e8e9e1] md:pr-6">
             <button
               onClick={() => setIsCartOpen(true)}
-              className="text-[#2d2f2b] hover:text-primary-strong transition-colors relative p-2"
+              className="text-[#2d2f2b] hover:text-primary-strong transition-colors relative p-2 flex items-center gap-2"
             >
-              <ShoppingCart size={22} />
-              {totalItems > 0 && (
-                <span className="absolute top-0 right-0 bg-primary text-on-primary text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#f7f7f0]">
-                  {totalItems}
-                </span>
-              )}
+              <span className="font-bold text-xs uppercase hidden md:block">Dopyt</span>
+              <div className="relative">
+                <ShoppingCart size={22} />
+                {totalItems > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-primary text-on-primary text-[10px] font-black h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#f7f7f0]">
+                    {totalItems}
+                  </span>
+                )}
+              </div>
             </button>
             <Link to="/admin" className="text-[#2d2f2b] hover:text-primary-strong transition-colors p-2 hidden xs:flex">
               <User size={22} />
@@ -83,8 +86,10 @@ const Navbar = () => {
 
       {/* Mobile Menu Overlay */}
       <div className={cn(
-        "fixed inset-0 top-[60px] md:top-[72px] bg-white z-[60] transition-all duration-300 lg:hidden overflow-y-auto",
-        isMenuOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
+        "fixed left-0 right-0 bottom-0 top-[60px] md:top-[72px] bg-white z-[60] transform transition-all duration-300 lg:hidden overflow-y-auto",
+        isMenuOpen 
+          ? "opacity-100 visible pointer-events-auto scale-100" 
+          : "opacity-0 invisible pointer-events-none scale-95"
       )}>
         <div className="flex flex-col p-8 space-y-5 pb-24">
           {links.map((link) => (

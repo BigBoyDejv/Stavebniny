@@ -6,12 +6,13 @@ import {
   Plus, Edit, Trash2, Package, Truck, MessageSquare, 
   LogOut, LayoutDashboard, Settings, Search, Filter, 
   ChevronRight, AlertCircle, CheckCircle2, X, Eye, Menu, PlusCircle,
-  Upload, Image, Loader2, Calendar, Wrench, Sliders
+  Upload, Image, Loader2, Calendar, Wrench, Sliders, Mail
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { cn, compressImage } from '../lib/utils'
 import { toast } from 'react-hot-toast'
+import { calculateShopShipping, MUNICIPALITIES, KM_RATES, ADDITIONAL_FEES } from '../lib/shipping'
 
 const Admin = () => {
   const { session } = useAuth()
@@ -22,16 +23,41 @@ const Admin = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [stats, setStats] = useState({ products: 0, orders: 0, inquiries: 0, stock: 0 })
+
+  // Shipping calculator states for admin
+  const [calcVehicle, setCalcVehicle] = useState('car35')
+  const [calcMunicipality, setCalcMunicipality] = useState('')
+  const [calcDistance, setCalcDistance] = useState(0)
+  const [calcCrane, setCalcCrane] = useState(false)
+  const [calcPallets, setCalcPallets] = useState(1)
+  const [calcWait, setCalcWait] = useState(false)
+  const [calcWaitHalfHours, setCalcWaitHalfHours] = useState(1)
   const [categories, setCategories] = useState([])
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [categoryFormData, setCategoryFormData] = useState({ name: '', type: 'material' })
   const [showModal, setShowModal] = useState(false)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [showInquiryDetails, setShowInquiryDetails] = useState(false)
+  const [selectedInquiry, setSelectedInquiry] = useState(null)
   const [editingItem, setEditingItem] = useState(null)
   const [imageUploading, setImageUploading] = useState(false)
   const [shippingConfig, setShippingConfig] = useState(null)
   const [showRentalModal, setShowRentalModal] = useState(false)
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [rentalItemsList, setRentalItemsList] = useState([])
+  const [bookingFormData, setBookingFormData] = useState({
+    rental_item_id: '',
+    customer_name: '',
+    customer_email: '',
+    customer_phone: '',
+    start_date: '',
+    end_date: '',
+    start_time: '08:00',
+    end_time: '08:00',
+    status: 'approved',
+    note: ''
+  })
   const [editingRental, setEditingRental] = useState(null)
   const [rentalFormData, setRentalFormData] = useState({
     name: '',
@@ -43,7 +69,8 @@ const Admin = () => {
     note: '',
     image_url: '',
     accessories: [],
-    availability: true
+    availability: true,
+    quantity: 1
   })
 
   const [formData, setFormData] = useState({
@@ -127,8 +154,7 @@ const Admin = () => {
     const { count: p } = await supabase.from('products').select('*', { count: 'exact', head: true })
     const { count: o } = await supabase.from('orders').select('*', { count: 'exact', head: true })
     const { count: i } = await supabase.from('inquiries').select('*', { count: 'exact', head: true })
-    const { data: s } = await supabase.from('products').select('id').lt('stock_quantity', 5)
-    setStats({ products: p || 0, orders: o || 0, inquiries: i || 0, stock: s?.length || 0 })
+    setStats({ products: p || 0, orders: o || 0, inquiries: i || 0 })
   }
 
   const fetchCategories = async () => {
@@ -150,6 +176,9 @@ const Admin = () => {
         .from('rental_bookings')
         .select('*, rental_items(name)')
         .order('created_at', { ascending: false })
+      
+      const { data: items } = await supabase.from('rental_items').select('id, name').order('name')
+      if (items) setRentalItemsList(items)
     } else if (view === 'rentals') {
       query = supabase
         .from('rental_items')
@@ -291,6 +320,61 @@ const Admin = () => {
     }
   }
 
+  const handleSaveBooking = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      if (!bookingFormData.rental_item_id) {
+        throw new Error('Musíte vybrať techniku.')
+      }
+      if (!bookingFormData.start_date || !bookingFormData.end_date) {
+        throw new Error('Musíte vybrať začiatok a koniec rezervácie.')
+      }
+      if (bookingFormData.start_date > bookingFormData.end_date) {
+        throw new Error('Začiatok rezervácie nemôže byť po jej skončení.')
+      }
+
+      // Check conflict for manual booking
+      const { data: conflicts, error: conflictErr } = await supabase
+        .from('rental_bookings')
+        .select('id')
+        .eq('rental_item_id', bookingFormData.rental_item_id)
+        .eq('status', 'approved')
+        .lte('start_date', bookingFormData.end_date)
+        .gte('end_date', bookingFormData.start_date)
+
+      if (conflictErr) throw conflictErr
+      if (conflicts && conflicts.length > 0) {
+        throw new Error('Tento termín je pre vybranú techniku už rezervovaný (obsadený).')
+      }
+
+      const { error } = await supabase
+        .from('rental_bookings')
+        .insert([{
+          rental_item_id: bookingFormData.rental_item_id,
+          customer_name: bookingFormData.customer_name,
+          customer_email: bookingFormData.customer_email || 'obchod@stavivalubela.sk',
+          customer_phone: bookingFormData.customer_phone || 'N/A',
+          start_date: bookingFormData.start_date,
+          end_date: bookingFormData.end_date,
+          start_time: bookingFormData.start_time,
+          end_time: bookingFormData.end_time,
+          status: bookingFormData.status,
+          delivery_method: 'pickup',
+          note: `MANUÁLNA REZERVÁCIA (Zadaná z administrácie)\n\n${bookingFormData.note}`
+        }])
+
+      if (error) throw error
+      toast.success('Rezervácia bola úspešne pridaná!')
+      setShowBookingModal(false)
+      fetchData()
+    } catch (err) {
+      toast.error('Chyba: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSaveShippingConfig = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -334,6 +418,51 @@ const Admin = () => {
     }
   }
 
+  const getActiveShippingConfig = () => {
+    let activeMunicipalities = MUNICIPALITIES
+    let activeKmRates = KM_RATES
+    let activeFees = ADDITIONAL_FEES
+
+    if (settings?.shipping_config) {
+      try {
+        const parsed = typeof settings.shipping_config === 'string'
+          ? JSON.parse(settings.shipping_config)
+          : settings.shipping_config
+        
+        if (parsed.municipalities) activeMunicipalities = parsed.municipalities
+        if (parsed.rates) activeKmRates = parsed.rates
+        if (parsed.fees) {
+          activeFees = {
+            craneUnloadPerPallet: parsed.fees.crane,
+            waitTimePerHalfHour: {
+              car35: parsed.fees.wait_car35,
+              hr8: parsed.fees.wait_hr8
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error parsing shipping_config:', e)
+      }
+    }
+    return { activeMunicipalities, activeKmRates, activeFees }
+  }
+
+  const getCalcResults = () => {
+    const config = getActiveShippingConfig()
+    return calculateShopShipping({
+      municipalityName: calcMunicipality,
+      vehicleType: calcVehicle,
+      customDistance: Number(calcDistance),
+      craneUnloading: calcVehicle === 'hr8' ? calcCrane : false,
+      palletsCount: Number(calcPallets),
+      waitTime: calcWait,
+      waitHalfHours: Number(calcWaitHalfHours),
+      customMunicipalities: config.activeMunicipalities,
+      customKmRates: config.activeKmRates,
+      customFees: config.activeFees
+    })
+  }
+
   const handleViewOrder = async (order) => {
     try {
       const { data, error } = await supabase
@@ -350,9 +479,35 @@ const Admin = () => {
       if (error) throw error
       setSelectedOrder({ ...order, items: data })
       setShowOrderDetails(true)
+
+      // Initialize calculator defaults
+      const config = getActiveShippingConfig()
+      const customerCity = order.shipping_info?.city || ''
+      const matched = config.activeMunicipalities.find(m => 
+        customerCity.toLowerCase().trim().includes(m.name.toLowerCase().trim()) ||
+        m.name.toLowerCase().trim().includes(customerCity.toLowerCase().trim())
+      )
+
+      if (matched) {
+        setCalcMunicipality(matched.name)
+        setCalcDistance(0)
+      } else {
+        setCalcMunicipality('other')
+        setCalcDistance(10) // default 10km if not matched
+      }
+      setCalcVehicle('car35')
+      setCalcCrane(false)
+      setCalcPallets(1)
+      setCalcWait(false)
+      setCalcWaitHalfHours(1)
     } catch (error) {
       console.error('Error fetching order items:', error.message)
     }
+  }
+
+  const handleViewInquiry = (inquiry) => {
+    setSelectedInquiry(inquiry)
+    setShowInquiryDetails(true)
   }
 
   const handleDelete = async (id) => {
@@ -466,8 +621,8 @@ const Admin = () => {
           <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => changeView('dashboard')} />
           <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => changeView('products')} />
           <NavItem icon={<Filter size={18}/>} label="Kategórie" active={view === 'categories'} onClick={() => changeView('categories')} />
-          <NavItem icon={<Truck size={18}/>} label="Objednávky" active={view === 'orders'} onClick={() => changeView('orders')} />
-          <NavItem icon={<MessageSquare size={18}/>} label="Zákaznícke dopyty" active={view === 'inquiries'} onClick={() => changeView('inquiries')} />
+          <NavItem icon={<Truck size={18}/>} label="Dopyty z katalógu" active={view === 'orders'} onClick={() => changeView('orders')} />
+          <NavItem icon={<MessageSquare size={18}/>} label="Správy z webu" active={view === 'inquiries'} onClick={() => changeView('inquiries')} />
           <NavItem icon={<Calendar size={18}/>} label="Rezervácie techniky" active={view === 'bookings'} onClick={() => changeView('bookings')} />
           <NavItem icon={<Wrench size={18}/>} label="Správa Požičovne" active={view === 'rentals'} onClick={() => changeView('rentals')} />
           <div className="pt-8 pb-4 px-4 text-[10px] font-bold uppercase text-outline tracking-wider">Nastavenia</div>
@@ -488,12 +643,12 @@ const Admin = () => {
           <div>
             <h1 className="text-4xl font-black tracking-tight capitalize">
               {view === 'products' ? 'Správa Inventára' : 
-               view === 'orders' ? 'Objednávky' : 
+               view === 'orders' ? 'Dopyty z katalógu' : 
                view === 'rentals' ? 'Správa Požičovne' :
                view === 'shipping' ? 'Cenník Dopravy' :
                view === 'categories' ? 'Kategórie' :
                view === 'bookings' ? 'Rezervácie Techniky' :
-               view === 'inquiries' ? 'Zákaznícke Dopyty' :
+               view === 'inquiries' ? 'Správy z webu' :
                view === 'settings' ? 'Systémové Nastavenia' :
                view === 'dashboard' ? 'Prehľad' : view}
             </h1>
@@ -532,13 +687,36 @@ const Admin = () => {
                   note: '',
                   image_url: '',
                   accessories: [],
-                  availability: true
+                  availability: true,
+                  quantity: 1
                 });
                 setShowRentalModal(true);
               }}
               className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
             >
               <Plus size={16} /> Pridať techniku
+            </button>
+          )}
+          {view === 'bookings' && (
+            <button 
+              onClick={() => {
+                setBookingFormData({
+                  rental_item_id: rentalItemsList[0]?.id || '',
+                  customer_name: '',
+                  customer_email: '',
+                  customer_phone: '',
+                  start_date: new Date().toISOString().split('T')[0],
+                  end_date: new Date().toISOString().split('T')[0],
+                  start_time: '08:00',
+                  end_time: '16:00',
+                  status: 'approved',
+                  note: ''
+                });
+                setShowBookingModal(true);
+              }}
+              className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
+            >
+              <Plus size={16} /> Pridať rezerváciu
             </button>
           )}
           {view === 'categories' && (
@@ -551,7 +729,7 @@ const Admin = () => {
           )}
         </header>
 
-        {view === 'dashboard' && <DashboardStats stats={stats} />}
+        {view === 'dashboard' && <DashboardStats stats={stats} changeView={changeView} />}
         
         {view !== 'dashboard' && view !== 'shipping' && view !== 'settings' && (
           <div className="bg-white border border-outline/10 shadow-sm overflow-hidden">
@@ -576,7 +754,6 @@ const Admin = () => {
                     <tr>
                       <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Položka</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Kategória</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Cena / Sklad</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Akcie</th>
                     </tr>
                   )}
@@ -592,7 +769,6 @@ const Admin = () => {
                     <tr>
                       <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Zákazník</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Kontaktné údaje</th>
-                      <th className="px-6 py-4 text-[10px] font-black uppercase text-outline">Celková suma</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase text-outline text-right">Stav / Akcie</th>
                     </tr>
                   )}
@@ -655,17 +831,6 @@ const Admin = () => {
                           <td className="px-6 py-5">
                             <span className="text-[10px] bg-surface-container px-2 py-1 uppercase font-bold text-outline">{item.category || 'Materiál'}</span>
                           </td>
-                          <td className="px-6 py-5">
-                            <div className="flex items-center gap-4">
-                              <span className="font-black text-sm">{(item.price || 0).toFixed(2)} € / {item.unit || 'ks'}</span>
-                              <span className={cn(
-                                "text-[10px] font-bold px-2 py-0.5 uppercase",
-                                item.stock_quantity < 5 ? "bg-error/10 text-error" : "bg-emerald-100 text-emerald-700"
-                              )}>
-                                 {item.stock_quantity} {item.unit || 'ks'}
-                              </span>
-                            </div>
-                          </td>
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button 
@@ -711,19 +876,21 @@ const Admin = () => {
                         <>
                           <td className="px-6 py-5">
                             <p className="font-bold text-sm">{item.shipping_info?.firstName} {item.shipping_info?.lastName}</p>
-                            <p className="text-[10px] text-outline font-mono">Objednávka #{item.id.slice(0,8)}</p>
+                            <p className="text-[10px] text-outline font-mono">Dopyt #{item.id.slice(0,8)}</p>
                           </td>
                           <td className="px-6 py-5 text-xs">
                             <p className="font-medium">{item.shipping_info?.phone}</p>
                             <a href={`mailto:${item.shipping_info?.email}`} className="text-primary-strong hover:underline font-bold block mt-0.5">{item.shipping_info?.email}</a>
                           </td>
-                          <td className="px-6 py-5 font-black text-sm">
-                            {(item.total_price || 0).toFixed(2)} €
-                          </td>
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-2 items-center">
                               <span className="text-[10px] bg-primary/20 text-[#546200] px-2 py-1 uppercase font-bold">{item.status || 'Prijatá'}</span>
                               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <a 
+                                  href={`mailto:${item.shipping_info?.email}?subject=Odpoveď na dopyt #${item.id.slice(0,8)}`}
+                                  className="p-2 hover:bg-primary/20 text-primary-strong transition-colors"
+                                  title="Odpovedať na e-mail"
+                                ><Mail size={16}/></a>
                                 <button 
                                   onClick={() => handleViewOrder(item)}
                                   className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
@@ -755,10 +922,15 @@ const Admin = () => {
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <a 
-                                href={`mailto:${item.email}`}
-                                className="p-2 hover:bg-primary/20 text-on-surface transition-colors inline-block text-center"
-                                title="Odpovedať"
-                              ><Eye size={16}/></a>
+                                href={`mailto:${item.email}?subject=Odpoveď na dopyt z webu`}
+                                className="p-2 hover:bg-primary/20 text-primary-strong transition-colors"
+                                title="Odpovedať na e-mail"
+                              ><Mail size={16}/></a>
+                              <button 
+                                onClick={() => handleViewInquiry(item)}
+                                className="p-2 hover:bg-primary/20 text-on-surface transition-colors"
+                                title="Zobraziť správu"
+                              ><Eye size={16}/></button>
                               <button 
                                 onClick={() => handleDelete(item.id)}
                                 className="p-2 hover:bg-error/10 text-error transition-colors"
@@ -805,6 +977,11 @@ const Admin = () => {
                           </td>
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-2">
+                              <a 
+                                href={`mailto:${item.customer_email}?subject=Odpoveď na rezerváciu: ${item.rental_items?.name || 'Technika'}`}
+                                className="bg-primary/10 text-primary-strong px-3 py-1.5 text-[9px] font-black uppercase tracking-wider hover:bg-primary/20 transition-colors flex items-center gap-1"
+                                title="Odpovedať na e-mail"
+                              ><Mail size={12}/> Odpovedať</a>
                               {item.status !== 'approved' && (
                                 <button 
                                   onClick={() => handleUpdateBookingStatus(item.id, 'approved')}
@@ -871,7 +1048,8 @@ const Admin = () => {
                                     note: item.note || '',
                                     image_url: item.image_url || item.imageUrl || '',
                                     accessories: Array.isArray(item.accessories) ? item.accessories : [],
-                                    availability: item.availability !== false
+                                    availability: item.availability !== false,
+                                    quantity: item.quantity || 1
                                   });
                                   setShowRentalModal(true);
                                 }}
@@ -943,6 +1121,10 @@ const Admin = () => {
                         </div>
 
                         <div className="flex gap-2 pt-1">
+                          <a 
+                            href={`mailto:${item.customer_email}?subject=Odpoveď na rezerváciu: ${item.rental_items?.name || 'Technika'}`}
+                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform text-center"
+                          ><Mail size={16}/> Odpovedať</a>
                           {item.status !== 'approved' && (
                             <button 
                               onClick={() => handleUpdateBookingStatus(item.id, 'approved')}
@@ -1001,7 +1183,8 @@ const Admin = () => {
                                 note: item.note || '',
                                 image_url: item.image_url || item.imageUrl || '',
                                 accessories: Array.isArray(item.accessories) ? item.accessories : [],
-                                availability: item.availability !== false
+                                availability: item.availability !== false,
+                                quantity: item.quantity || 1
                               });
                               setShowRentalModal(true);
                             }}
@@ -1078,7 +1261,7 @@ const Admin = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <p className="font-bold text-base text-on-surface leading-tight">{item.shipping_info?.firstName} {item.shipping_info?.lastName}</p>
-                            <p className="text-[10px] text-outline font-mono mt-1">Objednávka #{item.id.slice(0,8)}</p>
+                            <p className="text-[10px] text-outline font-mono mt-1">Dopyt #{item.id.slice(0,8)}</p>
                           </div>
                           <span className="text-[9px] bg-primary/20 text-[#546200] px-2 py-1 uppercase font-black tracking-wider shrink-0">
                             {item.status || 'Prijatá'}
@@ -1087,9 +1270,12 @@ const Admin = () => {
                         <div className="bg-surface p-3 text-xs border border-outline/5 space-y-1">
                           <p><strong>Tel:</strong> <a href={`tel:${item.shipping_info?.phone}`} className="text-primary hover:underline font-bold">{item.shipping_info?.phone}</a></p>
                           <p><strong>E-mail:</strong> <a href={`mailto:${item.shipping_info?.email}`} className="text-primary-strong hover:underline font-bold">{item.shipping_info?.email}</a></p>
-                          <p className="pt-1.5 border-t border-outline/5 text-sm font-black">Celková suma: {(item.total_price || 0).toFixed(2)} €</p>
                         </div>
                         <div className="flex gap-2 pt-2">
+                          <a 
+                            href={`mailto:${item.shipping_info?.email}?subject=Odpoveď na dopyt #${item.id.slice(0,8)}`}
+                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform text-center"
+                          ><Mail size={16}/> Odpovedať</a>
                           <button 
                             onClick={() => handleViewOrder(item)}
                             className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
@@ -1119,9 +1305,13 @@ const Admin = () => {
                         </div>
                         <div className="flex gap-2 pt-2">
                           <a 
-                            href={`mailto:${item.email}`}
-                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform text-center inline-block"
-                          ><Eye size={16}/> Odpovedať</a>
+                            href={`mailto:${item.email}?subject=Odpoveď na dopyt z webu`}
+                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform text-center"
+                          ><Mail size={16}/> Odpovedať</a>
+                          <button 
+                            onClick={() => handleViewInquiry(item)}
+                            className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform text-center"
+                          ><Eye size={16}/> Zobraziť</button>
                           <button 
                             onClick={() => handleDelete(item.id)}
                             className="flex-1 bg-error/10 text-error py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"
@@ -1138,13 +1328,15 @@ const Admin = () => {
 
         {/* Product Modal */}
         {showModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/40 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-2xl p-10 shadow-2xl relative">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8 bg-black/40 backdrop-blur-sm overflow-hidden">
+            <div className="bg-white w-full max-w-xl p-8 shadow-2xl relative flex flex-col max-h-[90vh]">
               <button 
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="absolute top-6 right-6 text-outline hover:text-on-surface transition-colors"
+                className="absolute top-6 right-6 text-outline hover:text-on-surface transition-colors z-10 bg-white rounded-full p-1 shadow-sm border border-outline/10"
               ><X size={24}/></button>
+              
+              <div className="overflow-y-auto pr-2 -mr-2">
               
               <h2 className="text-3xl font-black tracking-tight mb-8">
                 {editingItem ? 'Upraviť produkt' : 'Nový produkt'}
@@ -1216,26 +1408,6 @@ const Admin = () => {
                     <option value="m²">m² (štvorcový meter)</option>
                     <option value="100 ks">100 ks (balenie 100 ks)</option>
                   </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-outline">Cena (€)</label>
-                  <input 
-                    type="number" step="0.01"
-                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary"
-                    value={formData.price}
-                    onChange={e => setFormData({...formData, price: parseFloat(e.target.value)})}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-outline">Množstvo na sklade</label>
-                  <input 
-                    type="number"
-                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary"
-                    value={formData.stock_quantity}
-                    onChange={e => setFormData({...formData, stock_quantity: parseInt(e.target.value)})}
-                    required
-                  />
                 </div>
                 <div className="col-span-2 space-y-1">
                   <label className="text-[10px] font-bold uppercase text-outline">Popis produktu</label>
@@ -1319,6 +1491,7 @@ const Admin = () => {
                   </button>
                 </div>
               </form>
+              </div>
             </div>
           </div>
         )}
@@ -1335,13 +1508,13 @@ const Admin = () => {
               <div className="p-10 overflow-y-auto">
                 <div className="flex justify-between items-start mb-8">
                   <div>
-                    <h2 className="text-3xl font-black tracking-tight mb-2">Objednávka #{selectedOrder.id.slice(0,8)}</h2>
+                    <h2 className="text-3xl font-black tracking-tight mb-2">Dopyt #{selectedOrder.id.slice(0,8)}</h2>
                     <p className="text-sm text-outline font-medium uppercase tracking-widest">
                       {new Date(selectedOrder.created_at).toLocaleString('sk-SK')}
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="block text-[10px] font-bold text-outline uppercase mb-1">Stav objednávky</span>
+                    <span className="block text-[10px] font-bold text-outline uppercase mb-1">Stav dopytu</span>
                     <span className="bg-primary/20 text-[#546200] px-3 py-1 uppercase font-black text-xs tracking-wider">
                       {selectedOrder.status || 'PRIJATÁ'}
                     </span>
@@ -1374,41 +1547,142 @@ const Admin = () => {
                   </div>
                 </div>
 
-                {/* Shipping Details */}
+                {/* Shipping Calculator for Admin */}
                 <div className="mb-10 bg-surface p-6 border-l-4 border-primary shadow-sm animate-in fade-in duration-300">
-                  <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Zvolená doprava</h4>
-                  {selectedOrder.shipping_info?.shippingMethod === 'pickup' ? (
-                    <div>
-                      <p className="font-bold text-sm uppercase text-emerald-700">Osobný odber v stavebninách (Ľubeľa)</p>
-                      <p className="text-xs text-outline mt-1">Poplatok: 0.00 €</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-on-surface-variant">
-                      <div className="space-y-1">
-                        <p><strong>Dovoz na adresu:</strong> {selectedOrder.shipping_info?.deliveryMunicipality}</p>
-                        {selectedOrder.shipping_info?.deliveryDistanceKm && (
-                          <p><strong>Vzdialenosť:</strong> {selectedOrder.shipping_info.deliveryDistanceKm} km</p>
-                        )}
-                        <p><strong>Typ vozidla:</strong> {selectedOrder.shipping_info?.deliveryVehicle || 'Nezadané'}</p>
+                  <h4 className="text-[10px] font-black tracking-wider text-outline uppercase mb-4">
+                    Kalkulačka dopravy (Nacenenie dopravy)
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                    {/* Form */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[9px] font-bold text-outline uppercase block mb-1">Typ vozidla</label>
+                        <select 
+                          className="w-full p-2 bg-white border border-outline/25 font-bold"
+                          value={calcVehicle}
+                          onChange={e => setCalcVehicle(e.target.value)}
+                        >
+                          <option value="car35">Dodávka do 3.5t</option>
+                          <option value="hr8">Auto s hydraulickou rukou (HR 8t)</option>
+                        </select>
                       </div>
-                      <div className="space-y-1">
-                        {selectedOrder.shipping_info?.craneUnloading ? (
-                          <p className="text-emerald-700 font-bold">✓ Vykládka hydraulickou rukou ({selectedOrder.shipping_info.palletsCount}x paleta)</p>
-                        ) : (
-                          selectedOrder.shipping_info?.deliveryVehicle === 'Auto s HR 8t' && <p className="text-outline">Bez vykládky HR</p>
+
+                      <div>
+                        <label className="text-[9px] font-bold text-outline uppercase block mb-1">Obec doručenia</label>
+                        <select 
+                          className="w-full p-2 bg-white border border-outline/25 font-bold"
+                          value={calcMunicipality}
+                          onChange={e => setCalcMunicipality(e.target.value)}
+                        >
+                          {getActiveShippingConfig().activeMunicipalities.map(m => (
+                            <option key={m.name} value={m.name}>{m.name}</option>
+                          ))}
+                          <option value="other">Iná obec (podľa km)</option>
+                        </select>
+                      </div>
+
+                      {calcMunicipality === 'other' && (
+                        <div>
+                          <label className="text-[9px] font-bold text-outline uppercase block mb-1">Vzdialenosť (km tam aj späť)</label>
+                          <input 
+                            type="number" 
+                            className="w-full p-2 bg-white border border-outline/25 font-bold text-center"
+                            value={calcDistance}
+                            onChange={e => setCalcDistance(parseFloat(e.target.value) || 0)}
+                            min="0"
+                          />
+                        </div>
+                      )}
+
+                      {calcVehicle === 'hr8' && (
+                        <div className="space-y-2 border-t border-outline/5 pt-2">
+                          <label className="flex items-center gap-2 cursor-pointer font-bold select-none">
+                            <input 
+                              type="checkbox"
+                              checked={calcCrane}
+                              onChange={e => setCalcCrane(e.target.checked)}
+                              className="w-4 h-4 text-primary rounded-none focus:ring-0"
+                            />
+                            Vykládka hydraulickou rukou
+                          </label>
+
+                          {calcCrane && (
+                            <div>
+                              <label className="text-[9px] font-bold text-outline uppercase block mb-1">Počet paliet</label>
+                              <input 
+                                type="number" 
+                                className="w-full p-2 bg-white border border-outline/25 font-bold text-center"
+                                value={calcPallets}
+                                onChange={e => setCalcPallets(parseInt(e.target.value) || 1)}
+                                min="1"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="space-y-2 border-t border-outline/5 pt-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold select-none">
+                          <input 
+                            type="checkbox"
+                            checked={calcWait}
+                            onChange={e => setCalcWait(e.target.checked)}
+                            className="w-4 h-4 text-primary rounded-none focus:ring-0"
+                          />
+                          Čakanie šoféra / prestoj
+                        </label>
+
+                        {calcWait && (
+                          <div>
+                            <label className="text-[9px] font-bold text-outline uppercase block mb-1">Počet polhodín (prestoju)</label>
+                            <input 
+                              type="number" 
+                              className="w-full p-2 bg-white border border-outline/25 font-bold text-center"
+                              value={calcWaitHalfHours}
+                              onChange={e => setCalcWaitHalfHours(parseInt(e.target.value) || 1)}
+                              min="1"
+                            />
+                          </div>
                         )}
-                        {selectedOrder.shipping_info?.waitTime && (
-                          <p className="text-amber-700 font-bold">⏱ Prestoj pri vykládke ({selectedOrder.shipping_info.waitHalfHours * 30} minút)</p>
-                        )}
-                        <p className="text-[11px] text-outline font-black uppercase tracking-wider mt-2">
-                          Cena za prepravu: {Number(selectedOrder.shipping_info?.shippingPrice || 0).toFixed(2)} €
-                        </p>
                       </div>
                     </div>
-                  )}
+
+                    {/* Results display */}
+                    <div className="bg-white p-4 border border-outline/10 flex flex-col justify-between">
+                      <div>
+                        <h5 className="font-black text-xs uppercase tracking-wider mb-3 text-primary-strong">Výpočet dopravy:</h5>
+                        <div className="space-y-2 font-medium">
+                          <div className="flex justify-between border-b border-outline/5 pb-1">
+                            <span>Základná preprava:</span>
+                            <span className="font-bold">{getCalcResults().basePrice.toFixed(2)} €</span>
+                          </div>
+                          {calcVehicle === 'hr8' && calcCrane && (
+                            <div className="flex justify-between border-b border-outline/5 pb-1 text-emerald-700">
+                              <span>Vykládka HR ({calcPallets} ks):</span>
+                              <span className="font-bold">+{getCalcResults().cranePrice.toFixed(2)} €</span>
+                            </div>
+                          )}
+                          {calcWait && (
+                            <div className="flex justify-between border-b border-outline/5 pb-1 text-amber-700">
+                              <span>Prestoj ({calcWaitHalfHours * 30} min):</span>
+                              <span className="font-bold">+{getCalcResults().waitPrice.toFixed(2)} €</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="border-t-2 border-primary/45 pt-3 mt-4 flex justify-between items-center text-base font-black uppercase">
+                        <span>Cena dopravy celkom:</span>
+                        <span className="bg-[#2d2f2b] text-primary px-3 py-1.5 font-mono">
+                          {getCalcResults().totalShipping.toFixed(2)} €
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <h4 className="text-[10px] font-bold text-outline uppercase mb-4 tracking-widest">Položky objednávky</h4>
+                <h4 className="text-[10px] font-bold text-outline uppercase mb-4 tracking-widest">Položky dopytu</h4>
                 <div className="space-y-4">
                   {selectedOrder.items?.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between py-4 border-b border-outline/5 last:border-0">
@@ -1418,17 +1692,60 @@ const Admin = () => {
                         </div>
                         <div>
                           <p className="font-bold">{item.products?.name || 'Neznámy produkt'}</p>
-                          <p className="text-xs text-outline">{item.quantity} {item.products?.unit || 'ks'} × {(item.price_at_purchase || 0).toFixed(2)} €</p>
+                          <p className="text-xs text-outline">{item.quantity} {item.products?.unit || 'ks'}</p>
                         </div>
                       </div>
-                      <span className="font-black">{(item.quantity * (item.price_at_purchase || 0)).toFixed(2)} €</span>
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-                <div className="mt-10 pt-6 border-t-2 border-primary/20 flex justify-between items-center text-xl font-black uppercase tracking-tight">
-                  <span>Celková suma:</span>
-                  <span className="text-primary-container bg-[#2d2f2b] px-4 py-2">{selectedOrder.total_price.toFixed(2)} €</span>
+        {/* Inquiry Details Modal */}
+        {showInquiryDetails && selectedInquiry && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-[#2d2f2b]/60 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-lg shadow-2xl relative flex flex-col max-h-[90vh]">
+              <button 
+                onClick={() => setShowInquiryDetails(false)}
+                className="absolute top-6 right-6 text-outline hover:text-on-surface transition-colors"
+              ><X size={24}/></button>
+              
+              <div className="p-10 overflow-y-auto">
+                <div className="mb-8">
+                  <h2 className="text-3xl font-black tracking-tight mb-2">Správa z webu</h2>
+                  <p className="text-xs text-outline font-medium uppercase tracking-widest">
+                    Prijaté: {new Date(selectedInquiry.created_at).toLocaleString('sk-SK')}
+                  </p>
+                </div>
+
+                <div className="space-y-6 border-y border-outline/5 py-8">
+                  <div>
+                    <h4 className="text-[10px] font-bold text-outline uppercase mb-2 tracking-widest">Odosielateľ</h4>
+                    <p className="font-bold text-lg">{selectedInquiry.name}</p>
+                    <p className="text-on-surface-variant font-medium">
+                      <a href={`mailto:${selectedInquiry.email}`} className="text-primary-strong hover:underline font-bold">
+                        {selectedInquiry.email}
+                      </a>
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="text-[10px] font-bold text-outline uppercase mb-2 tracking-widest">Text správy</h4>
+                    <div className="bg-surface p-4 border border-outline/5 text-sm font-medium text-on-surface-variant whitespace-pre-wrap leading-relaxed">
+                      {selectedInquiry.message}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  <a 
+                    href={`mailto:${selectedInquiry.email}?subject=Re: Správa z webu (Stavebniny Lubeľa)&body=Dobrý deň ${selectedInquiry.name},%0D%0A%0D%0AOdovedáme na vašu správu:%0D%0A"${selectedInquiry.message}"%0D%0A%0D%0A`}
+                    className="w-full bg-[#2d2f2b] text-primary py-5 flex items-center justify-center font-black uppercase tracking-widest text-sm hover:scale-[1.01] transition-transform text-center"
+                  >
+                    Odpovedať e-mailom
+                  </a>
                 </div>
               </div>
             </div>
@@ -1897,6 +2214,16 @@ const Admin = () => {
                     required
                   />
                 </div>
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Celkový počet kusov (na sklade)</label>
+                  <input 
+                    type="number" min="1" step="1"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                    value={rentalFormData.quantity || 1}
+                    onChange={e => setRentalFormData({...rentalFormData, quantity: parseInt(e.target.value) || 1})}
+                    required
+                  />
+                </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase text-outline">Cena do 4 hodín (€)</label>
                   <input 
@@ -2095,6 +2422,149 @@ const Admin = () => {
           </div>
         )}
 
+        {/* Booking Modal */}
+        {showBookingModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-black/40 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white w-full max-w-2xl p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+              <button 
+                onClick={() => setShowBookingModal(false)}
+                className="absolute top-6 right-6 text-outline hover:text-on-surface transition-colors"
+              ><X size={24}/></button>
+              
+              <h2 className="text-3xl font-black tracking-tight mb-8">
+                Pridať rezerváciu
+              </h2>
+              
+              <form onSubmit={handleSaveBooking} className="grid grid-cols-2 gap-6">
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Technika na prenájom</label>
+                  <select 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
+                    value={bookingFormData.rental_item_id}
+                    onChange={e => setBookingFormData({...bookingFormData, rental_item_id: e.target.value})}
+                    required
+                  >
+                    <option value="" disabled>Vyberte techniku...</option>
+                    {rentalItemsList.map(item => (
+                      <option key={item.id} value={item.id}>{item.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Meno zákazníka</label>
+                  <input 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                    value={bookingFormData.customer_name}
+                    onChange={e => setBookingFormData({...bookingFormData, customer_name: e.target.value})}
+                    placeholder="Meno a priezvisko / Názov firmy"
+                    required
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Telefónne číslo</label>
+                  <input 
+                    type="tel"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                    value={bookingFormData.customer_phone}
+                    onChange={e => setBookingFormData({...bookingFormData, customer_phone: e.target.value})}
+                    placeholder="+421 ..."
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">E-mail</label>
+                  <input 
+                    type="email"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                    value={bookingFormData.customer_email}
+                    onChange={e => setBookingFormData({...bookingFormData, customer_email: e.target.value})}
+                    placeholder="email@priklad.sk"
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Začiatok rezervácie</label>
+                  <input 
+                    type="date"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                    value={bookingFormData.start_date}
+                    onChange={e => setBookingFormData({...bookingFormData, start_date: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Čas vyzdvihnutia</label>
+                  <input 
+                    type="time"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                    value={bookingFormData.start_time}
+                    onChange={e => setBookingFormData({...bookingFormData, start_time: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Koniec rezervácie</label>
+                  <input 
+                    type="date"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                    min={bookingFormData.start_date}
+                    value={bookingFormData.end_date}
+                    onChange={e => setBookingFormData({...bookingFormData, end_date: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Čas vrátenia</label>
+                  <input 
+                    type="time"
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary font-bold"
+                    value={bookingFormData.end_time}
+                    onChange={e => setBookingFormData({...bookingFormData, end_time: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Stav rezervácie</label>
+                  <select 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
+                    value={bookingFormData.status}
+                    onChange={e => setBookingFormData({...bookingFormData, status: e.target.value})}
+                    required
+                  >
+                    <option value="approved">Schválená (Termín sa zablokuje)</option>
+                    <option value="pending">Čakajúca</option>
+                  </select>
+                </div>
+
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold uppercase text-outline">Interná poznámka / Detaily</label>
+                  <textarea 
+                    className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm min-h-[80px]"
+                    value={bookingFormData.note}
+                    onChange={e => setBookingFormData({...bookingFormData, note: e.target.value})}
+                    placeholder="Napr. Zákazník zaplatil zálohu v hotovosti, osobné vyzdvihnutie..."
+                  />
+                </div>
+
+                <div className="col-span-2 pt-4 border-t border-outline/10">
+                  <button 
+                    disabled={loading}
+                    className="w-full bg-[#2d2f2b] text-primary hover:bg-primary hover:text-on-primary py-4 font-black uppercase tracking-widest disabled:opacity-50 transition-colors"
+                  >
+                    {loading ? 'UKLADÁM...' : 'ULOŽIŤ REZERVÁCIU'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Category Add Modal */}
         {showCategoryModal && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm">
@@ -2158,20 +2628,23 @@ const NavItem = ({ icon, label, active, onClick }) => (
   </button>
 )
 
-const DashboardStats = ({ stats }) => (
+const DashboardStats = ({ stats, changeView }) => (
   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-    <StatCard label="Produkty Celkom" value={stats.products} />
-    <StatCard label="Nové Objednávky" value={stats.orders} highlight />
-    <StatCard label="Nízky Stav Skladu" value={stats.stock} danger />
-    <StatCard label="Zákaznícke Dopyty" value={stats.inquiries} />
+    <StatCard label="Produkty Celkom" value={stats.products} onClick={() => changeView('products')} />
+    <StatCard label="Katalógové Dopyty" value={stats.orders} highlight onClick={() => changeView('orders')} />
+    <StatCard label="Nízky Stav Skladu" value={stats.stock} danger onClick={() => changeView('products')} />
+    <StatCard label="Správy z webu" value={stats.inquiries} onClick={() => changeView('inquiries')} />
   </div>
 )
 
-const StatCard = ({ label, value, change, highlight, danger }) => (
-  <div className={cn(
-    "p-6 bg-white border-l-4 shadow-sm",
-    highlight ? "border-primary" : danger ? "border-error" : "border-outline/20"
-  )}>
+const StatCard = ({ label, value, change, highlight, danger, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={cn(
+      "p-6 bg-white border-l-4 shadow-sm cursor-pointer hover:bg-surface transition-colors",
+      highlight ? "border-primary" : danger ? "border-error" : "border-outline/20"
+    )}
+  >
     <p className="text-[10px] uppercase font-black tracking-widest text-outline mb-1">{label}</p>
     <div className="flex items-baseline gap-2">
       <p className="text-2xl font-black">{value}</p>

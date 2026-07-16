@@ -28,7 +28,7 @@ export const CartProvider = ({ children }) => {
       }
       return [...prev, { ...product, quantity: qty }];
     });
-    toast.success(`${product.name} (${qty} ${product.unit || 'ks'}) pridané do košíka`, {
+    toast.success(`${product.name} (${qty} ${product.unit || 'ks'}) pridané do dopytu`, {
       style: {
         background: '#2d2f2b',
         color: '#DFFF00',

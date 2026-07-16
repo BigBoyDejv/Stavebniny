@@ -24,7 +24,8 @@ const Contact = () => {
       const { error } = await supabase
         .from('inquiries')
         .insert([{
-          ...formData,
+          name: formData.name,
+          email: formData.email,
           message: `PREDMET: ${formData.subject}\nINFO: ${formData.message}\nTELEFÓN: ${formData.phone || 'N/A'}`
         }])
 

@@ -123,7 +123,7 @@ const Home = () => {
           <h2 className="font-headline text-4xl font-semibold mt-4">Materiály pre váš projekt</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-rows-2 gap-4 md:gap-6 min-h-[500px] md:h-[700px]">
-          <div className="md:col-span-2 md:row-span-2 bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-square md:aspect-auto">
+          <Link to="/materialy" className="md:col-span-2 md:row-span-2 bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-square md:aspect-auto block">
             <Editable settingKey="home_cat_hruba" value={settings.home_cat_hruba} type="image" label="Kategória: Hrubá stavba" className="w-full h-full">
               <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={settings.home_cat_hruba} alt="Hrubá stavba" />
             </Editable>
@@ -132,8 +132,8 @@ const Home = () => {
               <p className="text-zinc-200 text-xs md:text-sm mt-2">Tehly, tvárnice, izolácie a ocel.</p>
               <div className="w-12 h-1 bg-primary mt-4 transform origin-left transition-transform group-hover:scale-x-150"></div>
             </div>
-          </div>
-          <div className="md:col-span-2 bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-[16/9] md:aspect-auto">
+          </Link>
+          <Link to="/materialy" className="md:col-span-2 bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-[16/9] md:aspect-auto block">
             <Editable settingKey="home_cat_sucha" value={settings.home_cat_sucha} type="image" label="Kategória: Suchá výstavba" className="w-full h-full">
               <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={settings.home_cat_sucha} alt="Suchá výstavba" />
             </Editable>
@@ -141,23 +141,23 @@ const Home = () => {
               <h3 className="text-white font-headline text-lg md:text-xl font-bold">Suchá výstavba</h3>
               <p className="text-zinc-200 text-xs md:text-sm mt-2">Sádrokartón a omietky.</p>
             </div>
-          </div>
-          <div className="bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-square md:aspect-auto">
+          </Link>
+          <Link to="/polnohospodarske-produkty" className="bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-square md:aspect-auto block">
             <Editable settingKey="home_cat_zahrada" value={settings.home_cat_zahrada} type="image" label="Kategória: Záhrada" className="w-full h-full">
               <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={settings.home_cat_zahrada} alt="Záhrada" />
             </Editable>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 pointer-events-none">
               <h3 className="text-white font-headline text-lg font-bold">Záhrada</h3>
             </div>
-          </div>
-          <div className="bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-square md:aspect-auto">
+          </Link>
+          <Link to="/farby-laky" className="bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-square md:aspect-auto block">
             <Editable settingKey="home_cat_farby" value={settings.home_cat_farby} type="image" label="Kategória: Farby a laky" className="w-full h-full">
               <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={settings.home_cat_farby} alt="Farby a laky" />
             </Editable>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 pointer-events-none">
               <h3 className="text-white font-headline text-lg font-bold">Farby a laky</h3>
             </div>
-          </div>
+          </Link>
         </div>
       </section>
 
@@ -171,7 +171,7 @@ const Home = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
             <Link to="/kontakt" className="bg-on-primary text-primary px-8 py-4 font-label font-bold tracking-wide hover:bg-zinc-800 transition-colors">Získať cenovú ponuku</Link>
-            <Link to="/materialy" className="border-2 border-on-primary text-on-primary px-8 py-4 font-label font-bold tracking-wide hover:bg-on-primary hover:text-primary transition-colors">Prejsť do e-shopu</Link>
+            <Link to="/materialy" className="border-2 border-on-primary text-on-primary px-8 py-4 font-label font-bold tracking-wide hover:bg-on-primary hover:text-primary transition-colors">Zobraziť materiály</Link>
           </div>
         </div>
       </section>

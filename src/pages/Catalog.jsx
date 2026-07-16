@@ -58,8 +58,6 @@ const Catalog = () => {
   })
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'price-asc') return a.price - b.price
-    if (sortBy === 'price-desc') return b.price - a.price
     if (sortBy === 'name-asc') return a.name.localeCompare(b.name)
     return new Date(b.created_at) - new Date(a.created_at) // newest
   })
@@ -146,8 +144,6 @@ const Catalog = () => {
                 className="flex-1 sm:flex-none bg-white border border-outline/10 p-3 text-xs font-bold uppercase tracking-widest focus:ring-1 focus:ring-primary outline-none"
               >
                 <option value="newest">Najnovšie</option>
-                <option value="price-asc">Cena (Od najlacnejšieho)</option>
-                <option value="price-desc">Cena (Od najdrahšieho)</option>
                 <option value="name-asc">Názov (A-Z)</option>
               </select>
             </div>
@@ -174,7 +170,6 @@ const Catalog = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {sortedProducts.map((product) => {
-                const priceStr = product.price.toFixed(2).split('.')
                 return (
                   <div
                     key={product.id}
@@ -209,23 +204,12 @@ const Catalog = () => {
                         {/* Rating removed as per business model */}
                       </div>
 
-                      <div className="mt-auto flex justify-between items-end">
-                        <div className="flex flex-col">
-                          <div className="flex items-start">
-                            <span className="text-3xl font-black tracking-tighter leading-none">{priceStr[0]}</span>
-                            <div className="flex flex-col ml-1">
-                              <span className="text-base font-black leading-none">{priceStr[1]}</span>
-                              <span className="text-lg font-black leading-none">€*</span>
-                              <p className="text-[10px] text-outline mt-1 font-medium">{product.price.toFixed(2)} € / {product.unit || 'ks'}</p>
-                            </div>
-                          </div>
-                        </div>
-
+                      <div className="mt-auto flex justify-end items-end">
                         <button
                           onClick={(e) => { e.stopPropagation(); addToCart(product); }}
-                          className="p-3 bg-surface hover:bg-primary hover:text-on-primary transition-all active:scale-95"
+                          className="px-4 py-3 bg-surface hover:bg-primary hover:text-on-primary transition-all active:scale-95 text-xs font-bold uppercase tracking-widest flex items-center gap-2"
                         >
-                          <ShoppingCart size={18} />
+                          <ShoppingCart size={16} /> Pridať do dopytu
                         </button>
                       </div>
                     </div>
@@ -264,10 +248,6 @@ const Catalog = () => {
                 </h2>
 
                 <div className="flex items-center gap-6 mb-10">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black">{selectedProduct.price.toFixed(2)} €</span>
-                    <span className="text-sm text-on-surface-variant font-bold leading-none">Vrátane DPH</span>
-                  </div>
                   <div className={cn(
                     "px-3 py-1 text-[10px] font-black uppercase tracking-widest border-2",
                     selectedProduct.stock_quantity > 0 ? "border-emerald-500 text-emerald-600" : "border-zinc-300 text-zinc-400"
@@ -318,7 +298,7 @@ const Catalog = () => {
                   className="w-full bg-[#2d2f2b] text-primary py-6 font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
                 >
                   <ShoppingCart size={22} />
-                  PRIDAŤ DO KOŠÍKA — {(selectedProduct.price * modalQty).toFixed(2)} €
+                  PRIDAŤ DO DOPYTU
                 </button>
                 <p className="text-[10px] text-center text-on-surface-variant font-bold uppercase tracking-widest pt-2">
                   Záruka kvality STAVEBNINY ĽUBEĽA
