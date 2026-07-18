@@ -50,24 +50,25 @@ CREATE TABLE products (
 );
 
 INSERT INTO products (name, description, price, category, sku, stock_quantity, image_url, type, unit) VALUES
-('Tehla Porotherm 30 Profi', 'Brúsená tehla pre obvodové murivo s vysokou tepelnou izoláciou.', 2.45, 'Hrubá stavba', 'TEH-P30', 1200, 'https://images.unsplash.com/photo-1590069230005-db32bc76f57b?auto=format&fit=crop&w=800&q=80', 'material', 'ks'),
-('Tvárnica DT 20 (50x20x25)', 'Betónová tvárnica pre stratené debnenie základov.', 1.85, 'Hrubá stavba', 'TVAR-DT20', 850, 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80', 'material', 'ks'),
-('Cement CEM II 32.5 R (25kg)', 'Portlandský cement pre bežné betónárske práce.', 4.20, 'Hrubá stavba', 'CEM-25KG', 200, 'https://images.unsplash.com/photo-1590486803833-2c521021bc64?auto=format&fit=crop&w=800&q=80', 'material', 'balenie'),
-('Murovacia malta Profi (25kg)', 'Suchá zmes pre murovanie z tehál i tvárnic.', 4.80, 'Hrubá stavba', 'MAL-25KG', 300, 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80', 'material', 'balenie'),
-('Sádrokartón GKB 12.5mm', 'Štandardná sádrokartónová doska Rigips.', 8.90, 'Suchá výstavba', 'SDK-GKB12', 150, 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&w=800&q=80', 'material', 'ks'),
-('Sádrokartón RBI (Vodeodolný)', 'Zelená doska do kúpeľní.', 12.50, 'Suchá výstavba', 'SDK-RBI12', 80, 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80', 'material', 'ks'),
-('CD Profil 3m', 'Oceľový profil pre sádrokartónové podhľady.', 3.20, 'Suchá výstavba', 'PRO-CD3', 200, 'https://images.unsplash.com/photo-1563298723-dcfebaa392e3?auto=format&fit=crop&w=800&q=80', 'material', 'ks'),
-('Polystyrén EPS 70 (100mm)', 'Fasádny polystyrén pre zateplenie.', 9.50, 'Izolácie', 'ISO-EPS70', 300, 'https://images.unsplash.com/photo-1615529175066-6b215886d34e?auto=format&fit=crop&w=800&q=80', 'material', 'm2'),
-('Lepidlo na zateplenie (25kg)', 'Lepiaca malta pre EPS.', 5.90, 'Izolácie', 'LEP-25KG', 250, 'https://images.unsplash.com/photo-1590486803833-2c521021bc64?auto=format&fit=crop&w=800&q=80', 'material', 'balenie'),
-('Škridla Bramac Classic', 'Strešná krytina – Čierna.', 1.45, 'Strechy', 'STR-BRC', 2000, 'https://images.unsplash.com/photo-1632759162453-194f4c1722ec?auto=format&fit=crop&w=800&q=80', 'material', 'ks'),
-('Zámková dlažba 6cm Sivá', 'Dlažba pre chodníky.', 14.90, 'Záhrada', 'DLZ-HO6', 50, 'https://images.unsplash.com/photo-1584622781564-1d9876a13d00?auto=format&fit=crop&w=800&q=80', 'material', 'm2'),
-('Kladivo 500g Stanley', 'Kvalitné tesárske kladivo s ergonomickou rúčkou.', 14.50, 'Ručné náradie', 'NAR-KLAD', 15, 'https://images.unsplash.com/photo-1586864387417-f58fd44fa20e?auto=format&fit=crop&w=800&q=80', 'tool', 'ks'),
-('Uhlová brúska Bosch GWS', '125mm elektrická brúska pre profesionálov.', 89.00, 'Elektrické náradie', 'NAR-BRUS', 8, 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=800&q=80', 'tool', 'ks'),
-('Kuprikol 50 (100g)', 'Tradičný mednatý prípravok vo forme zmáčateľného prášku na ochranu rastlín.', 4.80, 'Postreky', 'AGR-POS-KUP', 50, 'https://images.unsplash.com/photo-1592417817098-8f3d6eb19675?auto=format&fit=crop&w=800&q=80', 'agriculture', 'balenie'),
-('Bofix (100ml)', 'Selektívny systémový herbicíd na ničenie dvojklíčnolistových burín.', 8.50, 'Postreky', 'AGR-POS-BOF', 30, 'https://images.unsplash.com/photo-1592417817098-8f3d6eb19675?auto=format&fit=crop&w=800&q=80', 'agriculture', 'balenie'),
-('Záhradné hrable kovové (14 zubov)', 'Kvalitné kovové hrable s drevenou násadou.', 12.90, 'Hrable a náradie', 'AGR-NAR-HRA', 25, 'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=800&q=80', 'agriculture', 'ks'),
-('Záhradná lopata Fiskars', 'Ergonomická špicatá lopata s kovovou násadou.', 24.50, 'Hrable a náradie', 'AGR-NAR-LOP', 15, 'https://images.unsplash.com/photo-1533038590840-1cde6b66b706?auto=format&fit=crop&w=800&q=80', 'agriculture', 'ks')
-ON CONFLICT (sku) DO NOTHING;
+('Tehla Porotherm 30 Profi', 'Brúsená tehla pre obvodové murivo s vysokou tepelnou izoláciou.', 2.45, 'Hrubá stavba', 'TEH-P30', 1200, '/images/products/brick.png', 'material', 'ks'),
+('Tvárnica DT 20 (50x20x25)', 'Betónová tvárnica pre stratené debnenie základov.', 1.85, 'Hrubá stavba', 'TVAR-DT20', 850, '/images/products/concrete.png', 'material', 'ks'),
+('Cement CEM II 32.5 R (25kg)', 'Portlandský cement pre bežné betónárske práce.', 4.20, 'Hrubá stavba', 'CEM-25KG', 200, '/images/products/cement.png', 'material', 'balenie'),
+('Murovacia malta Profi (25kg)', 'Suchá zmes pre murovanie z tehál i tvárnic.', 4.80, 'Hrubá stavba', 'MAL-25KG', 300, '/images/products/cement.png', 'material', 'balenie'),
+('Sádrokartón GKB 12.5mm', 'Štandardná sádrokartónová doska Rigips.', 8.90, 'Suchá výstavba', 'SDK-GKB12', 150, '/images/products/insulation.png', 'material', 'ks'),
+('Sádrokartón RBI (Vodeodolný)', 'Zelená doska do kúpeľní.', 12.50, 'Suchá výstavba', 'SDK-RBI12', 80, '/images/products/insulation.png', 'material', 'ks'),
+('CD Profil 3m', 'Oceľový profil pre sádrokartónové podhľady.', 3.20, 'Suchá výstavba', 'PRO-CD3', 200, '/images/products/concrete.png', 'material', 'ks'),
+('Polystyrén EPS 70 (100mm)', 'Fasádny polystyrén pre zateplenie.', 9.50, 'Izolácie', 'ISO-EPS70', 300, '/images/products/insulation.png', 'material', 'm2'),
+('Lepidlo na zateplenie (25kg)', 'Lepiaca malta pre EPS.', 5.90, 'Izolácie', 'LEP-25KG', 250, '/images/products/cement.png', 'material', 'balenie'),
+('Škridla Bramac Classic', 'Strešná krytina – Čierna.', 1.45, 'Strechy', 'STR-BRC', 2000, '/images/products/brick.png', 'material', 'ks'),
+('Zámková dlažba 6cm Sivá', 'Dlažba pre chodníky.', 14.90, 'Záhrada', 'DLZ-HO6', 50, '/images/products/concrete.png', 'material', 'm2'),
+('Kladivo 500g Stanley', 'Kvalitné tesárske kladivo s ergonomickou rúčkou.', 14.50, 'Ručné náradie', 'NAR-KLAD', 15, '/images/products/concrete.png', 'tool', 'ks'),
+('Uhlová brúska Bosch GWS', '125mm elektrická brúska pre profesionálov.', 89.00, 'Elektrické náradie', 'NAR-BRUS', 8, '/images/products/concrete.png', 'tool', 'ks'),
+('Kuprikol 50 (100g)', 'Tradičný mednatý prípravok vo forme zmáčateľného prášku na ochranu rastlín.', 4.80, 'Postreky', 'AGR-POS-KUP', 50, '/images/products/cement.png', 'agriculture', 'balenie'),
+('Bofix (100ml)', 'Selektívny systémový herbicíd na ničenie dvojklíčnolistových burín.', 8.50, 'Postreky', 'AGR-POS-BOF', 30, '/images/products/cement.png', 'agriculture', 'balenie'),
+('Záhradné hrable kovové (14 zubov)', 'Kvalitné kovové hrable s drevenou násadou.', 12.90, 'Hrable a náradie', 'AGR-NAR-HRA', 25, '/images/products/concrete.png', 'agriculture', 'ks'),
+('Záhradná lopata Fiskars', 'Ergonomická špicatá lopata s kovovou násadou.', 24.50, 'Hrable a náradie', 'AGR-NAR-LOP', 15, '/images/products/concrete.png', 'agriculture', 'ks')
+ON CONFLICT (sku) DO UPDATE SET
+  image_url = EXCLUDED.image_url;
 
 -- 3. POLOŽKY POŽIČOVNE
 DROP TABLE IF EXISTS rental_items CASCADE;

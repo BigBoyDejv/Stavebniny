@@ -15,7 +15,7 @@ import { toast } from 'react-hot-toast'
 import { calculateShopShipping, MUNICIPALITIES, KM_RATES, ADDITIONAL_FEES } from '../lib/shipping'
 
 const Admin = () => {
-  const { session } = useAuth()
+  const { session, logout } = useAuth()
   const { settings, refreshSettings } = useSettings()
   const [loading, setLoading] = useState(false)
   const [view, setView] = useState('dashboard')
@@ -621,8 +621,6 @@ const Admin = () => {
           <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => changeView('dashboard')} />
           <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => changeView('products')} />
           <NavItem icon={<Filter size={18}/>} label="Kategórie" active={view === 'categories'} onClick={() => changeView('categories')} />
-          <NavItem icon={<Truck size={18}/>} label="Dopyty z katalógu" active={view === 'orders'} onClick={() => changeView('orders')} />
-          <NavItem icon={<MessageSquare size={18}/>} label="Správy z webu" active={view === 'inquiries'} onClick={() => changeView('inquiries')} />
           <NavItem icon={<Calendar size={18}/>} label="Rezervácie techniky" active={view === 'bookings'} onClick={() => changeView('bookings')} />
           <NavItem icon={<Wrench size={18}/>} label="Správa Požičovne" active={view === 'rentals'} onClick={() => changeView('rentals')} />
           <div className="pt-8 pb-4 px-4 text-[10px] font-bold uppercase text-outline tracking-wider">Nastavenia</div>
@@ -631,7 +629,7 @@ const Admin = () => {
         </nav>
 
         <div className="p-8 mt-auto border-t border-outline/10">
-          <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-2 text-error text-[10px] font-black uppercase tracking-widest">
+          <button onClick={logout} className="flex items-center gap-2 text-error text-[10px] font-black uppercase tracking-widest">
             <LogOut size={14} /> Odhlásiť sa
           </button>
         </div>

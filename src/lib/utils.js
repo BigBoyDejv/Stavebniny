@@ -7,13 +7,13 @@ export function cn(...inputs) {
 
 export function getPlaceholderImage(category = '', type = '') {
   const images = {
-    'Hrubá stavba': 'https://images.unsplash.com/photo-1590069230002-70cc83bc50aa?auto=format&fit=crop&q=80&w=800',
-    'Suchá výstavba': 'https://images.unsplash.com/photo-1517646272486-a28f991f14c8?auto=format&fit=crop&q=80&w=800',
-    'Záhrada': 'https://images.unsplash.com/photo-1558905619-17254203dc1d?auto=format&fit=crop&q=80&w=800',
-    'Farby': 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?auto=format&fit=crop&q=80&w=800',
-    'default_material': 'https://images.unsplash.com/photo-1503387762-592dea58ef0e?auto=format&fit=crop&q=80&w=800',
-    'default_tool': 'https://images.unsplash.com/photo-1581244276891-99af93b6e82a?auto=format&fit=crop&q=80&w=800',
-    'default_rental': 'https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?auto=format&fit=crop&q=80&w=800'
+    'Hrubá stavba': '/images/products/brick.png',
+    'Suchá výstavba': '/images/products/insulation.png',
+    'Izolácie': '/images/products/insulation.png',
+    'Záhrada': '/images/products/concrete.png',
+    'default_material': '/images/products/brick.png',
+    'default_tool': '/images/products/concrete.png',
+    'default_rental': '/images/products/concrete.png'
   }
 
   if (images[category]) return images[category]
