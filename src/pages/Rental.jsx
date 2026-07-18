@@ -491,7 +491,7 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
 
                     {/* Quick Pricing Ribbon */}
                     <div className="absolute bottom-4 right-4 bg-primary text-on-primary px-3 py-2 shadow-lg font-black text-xs uppercase tracking-wider">
-                      do 24h: {item.price24h.toFixed(2)} €
+                      do 24h: {Number(item.price24h || 0).toFixed(2)} €
                     </div>
                   </div>
 
@@ -508,11 +508,11 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
                     <div className="pt-4 border-t border-outline/5 space-y-3">
                       <div className="flex justify-between text-[11px] font-bold text-outline uppercase tracking-wider">
                         <span>Do 4 hod:</span>
-                        <span className="text-on-surface">{item.price4h.toFixed(2)} €</span>
+                        <span className="text-on-surface">{Number(item.price4h || 0).toFixed(2)} €</span>
                       </div>
                       <div className="flex justify-between text-[11px] font-bold text-outline uppercase tracking-wider">
                         <span>Do 24 hod:</span>
-                        <span className="text-on-surface">{item.price24h.toFixed(2)} €</span>
+                        <span className="text-on-surface">{Number(item.price24h || 0).toFixed(2)} €</span>
                       </div>
                       {item.note && (
                         <div className="text-[10px] text-primary-strong font-black uppercase tracking-widest bg-primary/10 px-2 py-1 inline-block">

@@ -1098,12 +1098,12 @@ const Admin = () => {
                           </td>
                           <td className="px-6 py-5">
                             <div className="flex flex-col">
-                              <span className="font-bold text-xs">4h: {item.price4h?.toFixed(2)} €</span>
-                              <span className="font-black text-sm text-primary-strong">24h: {item.price24h?.toFixed(2)} €</span>
+                              <span className="font-bold text-xs">4h: {Number(item.price4h || 0).toFixed(2)} €</span>
+                              <span className="font-black text-sm text-primary-strong">24h: {Number(item.price24h || 0).toFixed(2)} €</span>
                             </div>
                           </td>
                           <td className="px-6 py-5">
-                            <span className="font-semibold text-xs text-outline">{item.deposit?.toFixed(2)} €</span>
+                            <span className="font-semibold text-xs text-outline">{Number(item.deposit || 0).toFixed(2)} €</span>
                           </td>
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1282,7 +1282,7 @@ const Admin = () => {
                             <p className="text-[10px] text-outline font-mono uppercase mt-1">{item.sku || 'Bez SKU'}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="block font-black text-base text-on-surface">{(item.price || 0).toFixed(2)} € / {item.unit || 'ks'}</span>
+                            <span className="block font-black text-base text-on-surface">{Number(item.price || 0).toFixed(2)} € / {item.unit || 'ks'}</span>
                             <span className={cn(
                               "inline-block text-[9px] font-black px-2 py-0.5 uppercase mt-1",
                               item.stock_quantity < 5 ? "bg-error/10 text-error" : "bg-emerald-100 text-emerald-700"
