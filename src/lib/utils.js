@@ -6,7 +6,21 @@ export function cn(...inputs) {
 }
 
 export function getPlaceholderImage(category = '', type = '') {
-  return ''
+  const images = {
+    'Hrubá stavba': '/images/products/brick.png',
+    'Suchá výstavba': '/images/products/insulation.png',
+    'Izolácie': '/images/products/insulation.png',
+    'Strechy': '/images/products/brick.png',
+    'Záhrada': '/images/products/concrete.png',
+    'default_material': '/images/products/brick.png',
+    'default_tool': '/images/products/concrete.png',
+    'default_rental': '/images/products/concrete.png'
+  }
+
+  if (images[category]) return images[category]
+  if (type === 'tool') return images.default_tool
+  if (type === 'rental') return images.default_rental
+  return images.default_material
 }
 
 export function compressImage(file, options = {}) {
