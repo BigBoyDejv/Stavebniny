@@ -2654,6 +2654,7 @@ const StatCard = ({ label, value, change, highlight, danger, onClick }) => (
 )
 
 const LoginComponent = () => {
+  const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -2661,9 +2662,9 @@ const LoginComponent = () => {
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      toast.error('Chyba prihlásenia: ' + error.message)
+    const res = await login(email, password)
+    if (res && res.error) {
+      toast.error('Chyba prihlásenia: ' + (res.error.message || res.error))
     } else {
       toast.success('Prihlásenie úspešné!')
     }

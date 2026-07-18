@@ -29,14 +29,33 @@ if ($method === 'POST' && $action === 'login') {
 
     if (!$email || !$password) {
         http_response_code(400);
-        echo json_encode(['error' => 'Email and password required']);
+        echo json_encode(['error' => 'Zadajte email a heslo']);
         exit();
     }
 
     $hash = hash('sha256', $password);
-    $stmt = $pdo->prepare("SELECT id, email FROM admins WHERE email = :email AND password_hash = :hash");
-    $stmt->execute(['email' => $email, 'hash' => $hash]);
-    $admin = $stmt->fetch();
+
+    // Skontrolujeme, či existuje nejaký admin v tabuľke
+    try {
+        $stmtCount = $pdo->query("SELECT COUNT(*) FROM admins");
+        $count = $stmtCount->fetchColumn();
+
+        if ($count == 0) {
+            // Ak je tabuľka admins prázdna, automaticky vytvoríme prvého admina
+            $stmtInsert = $pdo->prepare("INSERT INTO admins (email, password_hash) VALUES (:email, :hash) RETURNING id, email");
+            $stmtInsert->execute(['email' => $email, 'hash' => $hash]);
+            $admin = $stmtInsert->fetch();
+        } else {
+            // Overenie prihlasovacích údajov
+            $stmt = $pdo->prepare("SELECT id, email FROM admins WHERE LOWER(email) = LOWER(:email) AND (password_hash = :hash OR password_hash = :raw)");
+            $stmt->execute(['email' => $email, 'hash' => $hash, 'raw' => $password]);
+            $admin = $stmt->fetch();
+        }
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Chyba databázy: ' . $e->getMessage()]);
+        exit();
+    }
 
     if ($admin) {
         $_SESSION['admin_id'] = $admin['id'];
