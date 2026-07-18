@@ -44,8 +44,7 @@ const Catalog = () => {
     try {
       const data = await api.products.getAll()
       if (data && Array.isArray(data)) {
-        const materials = data.filter(p => !p.type || p.type === 'material')
-        setProducts(materials)
+        setProducts(data)
         setLoading(false)
         return
       }
@@ -54,7 +53,6 @@ const Catalog = () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('type', 'material')
         .order('created_at', { ascending: false })
 
       if (error) throw error
