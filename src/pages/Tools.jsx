@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight, Search, Filter, ShoppingBag, ShoppingCart, X, Plus, Minus, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { useCart } from '../context/CartContext'
 import { cn, getPlaceholderImage } from '../lib/utils'
 
@@ -23,28 +24,24 @@ const Tools = () => {
   }, [])
 
   const fetchCategories = async () => {
-    const { data } = await supabase
-      .from('categories')
-      .select('name')
-      .eq('type', 'tool')
-      .neq('name', 'Farby a laky')
-      .order('name')
-    if (data) setCategories(['Všetko', ...data.map(c => c.name)])
+    try {
+      const data = await api.categories.getAll()
+      if (data && Array.isArray(data)) {
+        setCategories(['Všetko', ...data.filter(c => c.name !== 'Farby a laky').map(c => c.name)])
+      }
+    } catch (err) {
+      console.error('Error fetching categories:', err)
+    }
   }
 
   const fetchTools = async () => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('type', 'tool')
-        .neq('category', 'Farby a laky')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setProducts(data || [])
+      const data = await api.products.getAll()
+      if (data && Array.isArray(data)) {
+        setProducts(data.filter(p => p.type === 'tool' && p.category !== 'Farby a laky'))
+      }
     } catch (error) {
-      console.error('Error fetching tools:', error.message)
+      console.error('Error fetching tools:', error)
     } finally {
       setLoading(false)
     }

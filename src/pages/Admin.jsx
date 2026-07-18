@@ -152,22 +152,28 @@ const Admin = () => {
   }, [view, settings.shipping_config])
 
   const fetchStats = async () => {
-    const { count: p } = await supabase.from('products').select('*', { count: 'exact', head: true })
-    const { count: o } = await supabase.from('orders').select('*', { count: 'exact', head: true })
-    const { count: i } = await supabase.from('inquiries').select('*', { count: 'exact', head: true })
-    setStats({ products: p || 0, orders: o || 0, inquiries: i || 0 })
+    try {
+      const products = await api.products.getAll()
+      const orders = await api.orders.getAll()
+      const inquiries = await api.inquiries.getAll()
+      setStats({
+        products: Array.isArray(products) ? products.length : 0,
+        orders: Array.isArray(orders) ? orders.length : 0,
+        inquiries: Array.isArray(inquiries) ? inquiries.length : 0
+      })
+    } catch (e) {
+      console.error('Fetch stats error:', e)
+    }
   }
 
   const fetchCategories = async () => {
     try {
       const data = await api.categories.getAll()
-      if (data && Array.isArray(data)) {
-        setCategories(data)
-        return
-      }
-    } catch (e) {}
-    const { data } = await supabase.from('categories').select('*').order('name')
-    setCategories(data || [])
+      setCategories(Array.isArray(data) ? data : [])
+    } catch (e) {
+      console.error('Fetch categories error:', e)
+      setCategories([])
+    }
   }
 
   const fetchData = async () => {
@@ -178,84 +184,30 @@ const Admin = () => {
     }
 
     try {
+      let data = []
       if (view === 'products') {
-        const data = await api.products.getAll()
-        if (data && Array.isArray(data)) {
-          setData(data)
-          fetchCategories()
-          setLoading(false)
-          return
-        }
+        data = await api.products.getAll()
+        fetchCategories()
       } else if (view === 'categories') {
-        const data = await api.categories.getAll()
-        if (data && Array.isArray(data)) {
-          setData(data)
-          setLoading(false)
-          return
-        }
-      } else if (view === 'rentals') {
-        const data = await api.rental.getItems()
-        if (data && Array.isArray(data)) {
-          setData(data)
-          setLoading(false)
-          return
-        }
+        data = await api.categories.getAll()
       } else if (view === 'orders') {
-        const data = await api.orders.getAll()
-        if (data && Array.isArray(data)) {
-          setData(data)
-          setLoading(false)
-          return
-        }
+        data = await api.orders.getAll()
       } else if (view === 'inquiries') {
-        const data = await api.inquiries.getAll()
-        if (data && Array.isArray(data)) {
-          setData(data)
-          setLoading(false)
-          return
-        }
+        data = await api.inquiries.getAll()
+      } else if (view === 'rentals') {
+        data = await api.rental.getItems()
       } else if (view === 'bookings') {
-        const data = await api.rental.getBookings()
-        if (data && Array.isArray(data)) {
-          setData(data)
-          const items = await api.rental.getItems()
-          if (items) setRentalItemsList(items)
-          setLoading(false)
-          return
-        }
+        data = await api.rental.getBookings()
+        const items = await api.rental.getItems()
+        if (Array.isArray(items)) setRentalItemsList(items)
       }
+      setData(Array.isArray(data) ? data : [])
     } catch (apiErr) {
-      console.warn('API fetch failed, falling back to Supabase:', apiErr)
+      console.error('API fetch failed:', apiErr)
+      setData([])
+    } finally {
+      setLoading(false)
     }
-    
-    // Fallback to Supabase
-    let query;
-    if (view === 'bookings') {
-      query = supabase
-        .from('rental_bookings')
-        .select('*, rental_items(name)')
-        .order('created_at', { ascending: false })
-      
-      const { data: items } = await supabase.from('rental_items').select('id, name').order('name')
-      if (items) setRentalItemsList(items)
-    } else if (view === 'rentals') {
-      query = supabase
-        .from('rental_items')
-        .select('*')
-        .order('name', { ascending: true })
-    } else {
-      const table = view === 'products' ? 'products' : 
-                   view === 'orders' ? 'orders' : 
-                   view === 'categories' ? 'categories' : 'inquiries'
-      query = supabase.from(table).select('*').order('created_at', { ascending: false })
-    }
-    
-    const { data, error } = await query
-    if (error) console.error(error)
-    else setData(data || [])
-    
-    if (view === 'products') fetchCategories()
-    setLoading(false)
   }
 
   const handleImageUpload = async (e, type = 'product') => {
@@ -308,26 +260,16 @@ const Admin = () => {
     e.preventDefault()
     setLoading(true)
     try {
-      const { data, error } = await supabase.from('categories').insert([categoryFormData]).select().single()
-      
-      if (error) {
-        if (error.code === '23505') { // Unique constraint violation
-          toast.error('Táto kategória už existuje. Skúste ju vyhľadať v zozname.')
-          const { data: existing } = await supabase.from('categories').select('*').eq('name', categoryFormData.name).single()
-          if (existing) setFormData(prev => ({ ...prev, category: existing.name }))
-        } else {
-          throw error
-        }
-      } else if (data) {
-        setFormData(prev => ({ ...prev, category: data.name }))
+      const data = await api.categories.create(categoryFormData)
+      if (data) {
+        setFormData(prev => ({ ...prev, category: data.name || categoryFormData.name }))
         toast.success('Kategória bola úspešne vytvorená!')
       }
-      
       setShowCategoryModal(false)
       await fetchCategories()
       if (view === 'categories') fetchData()
     } catch (err) {
-      toast.error('Chyba: ' + err.message)
+      toast.error('Chyba: ' + (err.response?.data?.error || err.message))
     } finally {
       setLoading(false)
     }
@@ -359,18 +301,16 @@ const Admin = () => {
     setLoading(true)
     try {
       if (editingRental) {
-        const { error } = await supabase.from('rental_items').update(rentalFormData).match({ id: editingRental.id })
-        if (error) throw error
+        await api.rental.updateItem({ ...rentalFormData, id: editingRental.id })
         toast.success('Položka požičovne bola úspešne upravená!')
       } else {
-        const { error } = await supabase.from('rental_items').insert([rentalFormData])
-        if (error) throw error
+        await api.rental.createItem(rentalFormData)
         toast.success('Položka požičovne bola úspešne pridaná!')
       }
       setShowRentalModal(false)
       fetchData()
     } catch (err) {
-      toast.error('Chyba: ' + err.message)
+      toast.error('Chyba: ' + (err.response?.data?.error || err.message))
     } finally {
       setLoading(false)
     }
@@ -390,42 +330,22 @@ const Admin = () => {
         throw new Error('Začiatok rezervácie nemôže byť po jej skončení.')
       }
 
-      // Check conflict for manual booking
-      const { data: conflicts, error: conflictErr } = await supabase
-        .from('rental_bookings')
-        .select('id')
-        .eq('rental_item_id', bookingFormData.rental_item_id)
-        .eq('status', 'approved')
-        .lte('start_date', bookingFormData.end_date)
-        .gte('end_date', bookingFormData.start_date)
+      await api.rental.createBooking({
+        rental_item_id: bookingFormData.rental_item_id,
+        customer_name: bookingFormData.customer_name,
+        customer_email: bookingFormData.customer_email || 'obchod@stavivalubela.sk',
+        customer_phone: bookingFormData.customer_phone || 'N/A',
+        start_date: bookingFormData.start_date,
+        end_date: bookingFormData.end_date,
+        notes: `MANUÁLNA REZERVÁCIA (Zadaná z administrácie)\n\n${bookingFormData.note || ''}`,
+        status: bookingFormData.status || 'approved'
+      })
 
-      if (conflictErr) throw conflictErr
-      if (conflicts && conflicts.length > 0) {
-        throw new Error('Tento termín je pre vybranú techniku už rezervovaný (obsadený).')
-      }
-
-      const { error } = await supabase
-        .from('rental_bookings')
-        .insert([{
-          rental_item_id: bookingFormData.rental_item_id,
-          customer_name: bookingFormData.customer_name,
-          customer_email: bookingFormData.customer_email || 'obchod@stavivalubela.sk',
-          customer_phone: bookingFormData.customer_phone || 'N/A',
-          start_date: bookingFormData.start_date,
-          end_date: bookingFormData.end_date,
-          start_time: bookingFormData.start_time,
-          end_time: bookingFormData.end_time,
-          status: bookingFormData.status,
-          delivery_method: 'pickup',
-          note: `MANUÁLNA REZERVÁCIA (Zadaná z administrácie)\n\n${bookingFormData.note}`
-        }])
-
-      if (error) throw error
       toast.success('Rezervácia bola úspešne pridaná!')
       setShowBookingModal(false)
       fetchData()
     } catch (err) {
-      toast.error('Chyba: ' + err.message)
+      toast.error('Chyba: ' + (err.response?.data?.error || err.message))
     } finally {
       setLoading(false)
     }
@@ -435,17 +355,11 @@ const Admin = () => {
     e.preventDefault()
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('site_settings')
-        .upsert({
-          key: 'shipping_config',
-          value: JSON.stringify(shippingConfig)
-        })
-      if (error) throw error
+      await api.settings.update({ shipping_config: JSON.stringify(shippingConfig) })
       toast.success('Cenník dopravy bol úspešne uložený!')
       await refreshSettings()
     } catch (err) {
-      toast.error('Chyba pri ukladaní cenníka: ' + err.message)
+      toast.error('Chyba pri ukladaní cenníka: ' + (err.response?.data?.error || err.message))
     } finally {
       setLoading(false)
     }
@@ -455,20 +369,11 @@ const Admin = () => {
     e.preventDefault()
     setLoading(true)
     try {
-      const upsertPromises = Object.entries(settingsForm).map(([key, value]) => {
-        return supabase
-          .from('site_settings')
-          .upsert({ key, value: String(value) })
-      })
-      
-      const results = await Promise.all(upsertPromises)
-      const failed = results.find(r => r.error)
-      if (failed) throw failed.error
-      
+      await api.settings.update(settingsForm)
       toast.success('Systémové nastavenia boli úspešne uložené!')
       await refreshSettings()
     } catch (err) {
-      toast.error('Chyba pri ukladaní nastavení: ' + err.message)
+      toast.error('Chyba pri ukladaní nastavení: ' + (err.response?.data?.error || err.message))
     } finally {
       setLoading(false)
     }
@@ -570,46 +475,27 @@ const Admin = () => {
     if (!confirm('Naozaj vymazať?')) return
     try {
       if (view === 'products') {
-        try {
-          await api.products.delete(id)
-        } catch (apiErr) {
-          const { error } = await supabase.from('products').delete().match({ id })
-          if (error) throw error
-        }
+        await api.products.delete(id)
       } else if (view === 'categories') {
-        try {
-          await api.categories.delete(id)
-        } catch (apiErr) {
-          const { error } = await supabase.from('categories').delete().match({ id })
-          if (error) throw error
-        }
-      } else {
-        const table = view === 'orders' ? 'orders' : 
-                      view === 'bookings' ? 'rental_bookings' : 
-                      view === 'rentals' ? 'rental_items' : 'inquiries'
-        const { error } = await supabase.from(table).delete().match({ id })
-        if (error) throw error
+        await api.categories.delete(id)
+      } else if (view === 'rentals') {
+        await api.rental.deleteItem(id)
       }
       toast.success('Položka bola úspešne vymazaná.')
       fetchData()
     } catch (error) {
-      toast.error('Chyba pri mazaní: ' + error.message)
+      toast.error('Chyba pri mazaní: ' + (error.response?.data?.error || error.message))
     }
   }
 
   const handleUpdateBookingStatus = async (id, status) => {
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('rental_bookings')
-        .update({ status })
-        .match({ id })
-
-      if (error) throw error
+      await api.rental.updateBookingStatus(id, status)
       toast.success(status === 'approved' ? 'Rezervácia bola schválená!' : 'Rezervácia bola zamietnutá.')
       fetchData()
     } catch (err) {
-      toast.error('Chyba: ' + err.message)
+      toast.error('Chyba: ' + (err.response?.data?.error || err.message))
     } finally {
       setLoading(false)
     }

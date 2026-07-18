@@ -26,18 +26,13 @@ const Catalog = () => {
 
   const fetchCategories = async () => {
     try {
-      const data = await api.categories.getAll('material')
+      const data = await api.categories.getAll()
       if (data && Array.isArray(data)) {
         setCategories(['Všetko', ...data.map(c => c.name)])
-        return
       }
-    } catch (err) {}
-    const { data } = await supabase
-      .from('categories')
-      .select('name')
-      .eq('type', 'material')
-      .order('name')
-    if (data) setCategories(['Všetko', ...data.map(c => c.name)])
+    } catch (err) {
+      console.error('Error fetching categories:', err)
+    }
   }
 
   const fetchProducts = async () => {
@@ -45,20 +40,9 @@ const Catalog = () => {
       const data = await api.products.getAll()
       if (data && Array.isArray(data)) {
         setProducts(data)
-        setLoading(false)
-        return
       }
-    } catch (err) {}
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setProducts(data || [])
-    } catch (error) {
-      console.error('Error fetching products:', error.message)
+    } catch (err) {
+      console.error('Error fetching products:', err)
     } finally {
       setLoading(false)
     }

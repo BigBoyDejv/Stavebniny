@@ -312,8 +312,9 @@ PRÍSLUŠENSTVO: ${costDetails.accCost.toFixed(2)} €
 ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toFixed(2)} €\n` : ''}CELKOVÁ CENA: ${costDetails.total.toFixed(2)} € (Vratná kaucia sa hradí v hotovosti pri prevzatí)`
 
     try {
-      // 1. Insert into rental bookings
-      const { error: bookingError } = await supabase.from('rental_bookings').insert([{
+      // 1. Insert into rental bookings via API
+      await api.rental.createBooking({
+        rental_item_id: selectedItem.id,
         customer_name: inquiryData.name,
         customer_email: inquiryData.email,
         customer_phone: inquiryData.phone,
@@ -327,18 +328,18 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
         delivery_zip: deliveryMethod === 'delivery' ? deliveryZip : null,
         delivery_municipality: deliveryMethod === 'delivery' ? (deliveryMunicipality === 'other' ? 'Iná obec' : deliveryMunicipality) : null,
         delivery_price: deliveryMethod === 'delivery' ? costDetails.deliveryCost : 0,
-        note: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
+        notes: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
         status: 'pending'
-      }])
-      
-      if (bookingError) throw bookingError
+      })
 
-      // 2. Insert inquiry copy for backup
-      await supabase.from('inquiries').insert([{
-        name: inquiryData.name,
-        email: inquiryData.email,
-        message: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
-      }])
+      // 2. Insert inquiry copy via API
+      try {
+        await api.inquiries.create({
+          name: inquiryData.name,
+          email: inquiryData.email,
+          message: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
+        })
+      } catch (inqErr) {}
 
       // 3. Send email notification (if flag enabled)
       const emailTo = settings.contact_email || 'kubik@stavivalubela.sk';

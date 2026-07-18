@@ -34,24 +34,9 @@ export const SettingsProvider = ({ children }) => {
       const data = await api.settings.get()
       if (data && Object.keys(data).length > 0) {
         setSettings(prev => ({ ...prev, ...data }))
-        setLoading(false)
-        return
       }
     } catch (err) {
-      console.warn('PHP settings fetch fallback to Supabase:', err)
-    }
-
-    try {
-      if (supabase && supabase.from) {
-        const { data } = await supabase.from('site_settings').select('*')
-        if (data && data.length > 0) {
-          const loadedSettings = { ...defaultSettings }
-          data.forEach(item => { loadedSettings[item.key] = item.value })
-          setSettings(loadedSettings)
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching settings:', err)
+      console.error('Error fetching settings from ExoHosting API:', err)
     } finally {
       setLoading(false)
     }
