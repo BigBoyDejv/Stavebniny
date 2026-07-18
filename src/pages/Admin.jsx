@@ -337,26 +337,17 @@ const Admin = () => {
     setLoading(true)
     try {
       if (editingItem) {
-        try {
-          await api.products.update({ ...formData, id: editingItem.id })
-        } catch (apiErr) {
-          const { error } = await supabase.from('products').update(formData).match({ id: editingItem.id })
-          if (error) throw error
-        }
+        await api.products.update({ ...formData, id: editingItem.id })
         toast.success('Produkt bol úspešne upravený!')
       } else {
-        try {
-          await api.products.create(formData)
-        } catch (apiErr) {
-          const { error } = await supabase.from('products').insert([formData])
-          if (error) throw error
-        }
+        await api.products.create(formData)
         toast.success('Produkt bol úspešne pridaný!')
       }
       setShowModal(false)
       fetchData()
     } catch (err) {
-      toast.error('Chyba: ' + err.message)
+      console.error('Save product error:', err)
+      toast.error('Chyba pri ukladaní: ' + (err.response?.data?.error || err.message))
     } finally {
       setLoading(false)
     }
