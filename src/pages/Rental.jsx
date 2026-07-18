@@ -294,7 +294,7 @@ const Rental = () => {
     const chosenAccs = selectedForBooking.accessories
       ? selectedForBooking.accessories
         .filter(a => selectedAccIds.includes(a.id))
-        .map(a => `${a.name} (${a.price.toFixed(2)} €)`)
+        .map(a => `${a.name} (${Number(a.price || 0).toFixed(2)} €)`)
         .join(', ') || 'Žiadne'
       : 'Žiadne'
 
@@ -909,7 +909,7 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
                                     <span className="text-xs font-bold text-on-surface">{acc.name}</span>
                                   </div>
                                   <span className="text-xs font-black shrink-0 ml-4">
-                                    +{acc.price.toFixed(2)} € {acc.flat ? '' : '/ 1mm'}
+                                    +{Number(acc.price || 0).toFixed(2)} € {acc.flat ? '' : '/ 1mm'}
                                   </span>
                                 </label>
                               )

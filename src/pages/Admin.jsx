@@ -1117,12 +1117,12 @@ const Admin = () => {
                             </span>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="block font-black text-sm text-primary-strong">24h: {item.price24h?.toFixed(2)} €</span>
-                            <span className="block text-xs text-outline mt-0.5">4h: {item.price4h?.toFixed(2)} €</span>
+                            <span className="block font-black text-sm text-primary-strong">24h: {Number(item.price24h || 0).toFixed(2)} €</span>
+                            <span className="block text-xs text-outline mt-0.5">4h: {Number(item.price4h || 0).toFixed(2)} €</span>
                           </div>
                         </div>
                         <div className="bg-surface p-3 text-[10px] font-semibold space-y-1">
-                          <p><strong className="uppercase text-outline text-[9px]">Záloha:</strong> {item.deposit?.toFixed(2)} €</p>
+                          <p><strong className="uppercase text-outline text-[9px]">Záloha:</strong> {Number(item.deposit || 0).toFixed(2)} €</p>
                           {item.accessories?.length > 0 && (
                             <p><strong className="uppercase text-outline text-[9px]">Príslušenstvo:</strong> {item.accessories.length} ks</p>
                           )}
