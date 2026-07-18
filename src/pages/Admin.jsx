@@ -199,6 +199,20 @@ const Admin = () => {
           setLoading(false)
           return
         }
+      } else if (view === 'orders') {
+        const data = await api.orders.getAll()
+        if (data && Array.isArray(data)) {
+          setData(data)
+          setLoading(false)
+          return
+        }
+      } else if (view === 'inquiries') {
+        const data = await api.inquiries.getAll()
+        if (data && Array.isArray(data)) {
+          setData(data)
+          setLoading(false)
+          return
+        }
       } else if (view === 'bookings') {
         const data = await api.rental.getBookings()
         if (data && Array.isArray(data)) {
@@ -663,6 +677,8 @@ const Admin = () => {
           <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => changeView('dashboard')} />
           <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => changeView('products')} />
           <NavItem icon={<Filter size={18}/>} label="Kategórie" active={view === 'categories'} onClick={() => changeView('categories')} />
+          <NavItem icon={<Truck size={18}/>} label="Dopyty z katalógu" active={view === 'orders'} onClick={() => changeView('orders')} />
+          <NavItem icon={<MessageSquare size={18}/>} label="Správy z webu" active={view === 'inquiries'} onClick={() => changeView('inquiries')} />
           <NavItem icon={<Calendar size={18}/>} label="Rezervácie techniky" active={view === 'bookings'} onClick={() => changeView('bookings')} />
           <NavItem icon={<Wrench size={18}/>} label="Správa Požičovne" active={view === 'rentals'} onClick={() => changeView('rentals')} />
           <div className="pt-8 pb-4 px-4 text-[10px] font-bold uppercase text-outline tracking-wider">Nastavenia</div>
