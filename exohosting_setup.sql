@@ -172,8 +172,9 @@ INSERT INTO site_settings (key, value) VALUES
 ('opening_hours_sun', 'Zatvorené'),
 ('hours_alert_enabled', 'false'),
 ('hours_alert_message', ''),
-('hours_alert_type', 'info')
-ON CONFLICT (key) DO NOTHING;
+('hours_alert_type', 'info'),
+('shipping_config', '{"rates":{"car35":1.50,"hr8":3.00},"fees":{"crane":5.00,"wait_car35":5.00,"wait_hr8":10.00},"municipalities":[{"name":"Ľubeľa","car35":8.00,"hr8":45.00},{"name":"Dúbrava","car35":16.00,"hr8":45.00},{"name":"Lipt. Kľačany","car35":16.00,"hr8":45.00},{"name":"Vlachy, Vlašky","car35":20.00,"hr8":50.00},{"name":"Krmeš","car35":16.00,"hr8":45.00},{"name":"Malatíny","car35":16.00,"hr8":45.00},{"name":"Svätý Kríž","car35":20.00,"hr8":50.00},{"name":"Gálovany","car35":20.00,"hr8":50.00},{"name":"Part. Lupča","car35":20.00,"hr8":45.00},{"name":"Lipt. Mikuláš","car35":30.00,"hr8":50.00},{"name":"Ružomberok","car35":30.00,"hr8":50.00},{"name":"Lipt. Michal","car35":25.00,"hr8":50.00},{"name":"Andice","car35":25.00,"hr8":50.00},{"name":"Gôtovany","car35":16.00,"hr8":45.00}]}')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 -- 8. ADMIN POUŽÍVATELIA
 DROP TABLE IF EXISTS admins CASCADE;
