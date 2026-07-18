@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight, Grid2x2, List, PlusCircle, ShoppingCart, Star, Loader2, Search, CheckCircle2, Eye, X, Plus, Minus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { useCart } from '../context/CartContext'
 import { cn, getPlaceholderImage } from '../lib/utils'
 
@@ -24,6 +25,13 @@ const Catalog = () => {
   }, [])
 
   const fetchCategories = async () => {
+    try {
+      const data = await api.categories.getAll('material')
+      if (data && Array.isArray(data)) {
+        setCategories(['Všetko', ...data.map(c => c.name)])
+        return
+      }
+    } catch (err) {}
     const { data } = await supabase
       .from('categories')
       .select('name')
@@ -33,6 +41,14 @@ const Catalog = () => {
   }
 
   const fetchProducts = async () => {
+    try {
+      const data = await api.products.getAll({ type: 'material' })
+      if (data && Array.isArray(data)) {
+        setProducts(data)
+        setLoading(false)
+        return
+      }
+    } catch (err) {}
     try {
       const { data, error } = await supabase
         .from('products')

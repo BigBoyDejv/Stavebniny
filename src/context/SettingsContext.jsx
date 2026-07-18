@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 
 const SettingsContext = createContext()
 
-// Hardcoded default fallback values
 const defaultSettings = {
   hours_weekday: '07:00 - 12:00, 12:30 - 16:30',
   hours_saturday: '07:00 - 11:00',
@@ -31,21 +31,24 @@ export const SettingsProvider = ({ children }) => {
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('site_settings')
-        .select('*')
-      
-      if (error) {
-        console.warn('Could not load settings from site_settings table:', error.message)
+      const data = await api.settings.get()
+      if (data && Object.keys(data).length > 0) {
+        setSettings(prev => ({ ...prev, ...data }))
+        setLoading(false)
         return
       }
+    } catch (err) {
+      console.warn('PHP settings fetch fallback to Supabase:', err)
+    }
 
-      if (data && data.length > 0) {
-        const loadedSettings = { ...defaultSettings }
-        data.forEach(item => {
-          loadedSettings[item.key] = item.value
-        })
-        setSettings(loadedSettings)
+    try {
+      if (supabase && supabase.from) {
+        const { data } = await supabase.from('site_settings').select('*')
+        if (data && data.length > 0) {
+          const loadedSettings = { ...defaultSettings }
+          data.forEach(item => { loadedSettings[item.key] = item.value })
+          setSettings(loadedSettings)
+        }
       }
     } catch (err) {
       console.error('Error fetching settings:', err)
@@ -59,10 +62,7 @@ export const SettingsProvider = ({ children }) => {
   }, [])
 
   const updateSettingState = (key, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [key]: value
-    }))
+    setSettings(prev => ({ ...prev, [key]: value }))
   }
 
   return (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { ChevronRight, ClipboardList, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -28,35 +29,52 @@ const Checkout = () => {
     e.preventDefault();
     setLoading(true);
 
+    const orderPayload = {
+      customer_name: `${orderDetails.firstName} ${orderDetails.lastName}`.trim(),
+      customer_email: orderDetails.email,
+      customer_phone: orderDetails.phone,
+      delivery_address: orderDetails.address,
+      delivery_city: orderDetails.city,
+      delivery_zip: orderDetails.zip,
+      total_price: 0,
+      status: 'dopyt',
+      note: orderDetails.message,
+      items: cart
+    }
+
     try {
-      // 1. Create Order (used as Inquiry)
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert([{
-          total_price: 0,
-          status: 'dopyt',
-          shipping_info: {
-            ...orderDetails,
-            shippingMethod: 'inquiry',
-            message: orderDetails.message
-          }
-        }])
-        .select()
-        .single();
+      try {
+        await api.orders.create(orderPayload)
+      } catch (phpErr) {
+        console.warn('PHP order submission failed, falling back to Supabase:', phpErr)
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .insert([{
+            total_price: 0,
+            status: 'dopyt',
+            shipping_info: {
+              ...orderDetails,
+              shippingMethod: 'inquiry',
+              message: orderDetails.message
+            }
+          }])
+          .select()
+          .single();
 
-      if (orderError) throw orderError;
+        if (orderError) throw orderError;
 
-      // 2. Create Order Items
-      const itemsToInsert = cart.map(item => ({
-        order_id: order.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        price_at_purchase: 0
-      }));
+        const itemsToInsert = cart.map(item => ({
+          order_id: order.id,
+          product_id: item.id,
+          quantity: item.quantity,
+          price_at_purchase: 0
+        }));
 
-       const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(itemsToInsert);
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(itemsToInsert);
+        if (itemsError) throw itemsError;
+      }
 
       if (itemsError) throw itemsError;
 

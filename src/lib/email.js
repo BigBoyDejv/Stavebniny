@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// FEATURE FLAG: Zmeňte na true, keď bude k dispozícii prístup k e-mailovej schránke pre aktiváciu.
-export const ENABLE_EMAIL_NOTIFICATIONS = false;
+// FEATURE FLAG: Zapnuté pre produkčné nasadenie
+export const ENABLE_EMAIL_NOTIFICATIONS = true;
 
 /**
  * Odosiela e-mailovú notifikáciu cez bezplatnú službu FormSubmit.co.
