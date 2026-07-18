@@ -337,12 +337,20 @@ const Admin = () => {
     setLoading(true)
     try {
       if (editingItem) {
-        const { error } = await supabase.from('products').update(formData).match({ id: editingItem.id })
-        if (error) throw error
+        try {
+          await api.products.update({ ...formData, id: editingItem.id })
+        } catch (apiErr) {
+          const { error } = await supabase.from('products').update(formData).match({ id: editingItem.id })
+          if (error) throw error
+        }
         toast.success('Produkt bol úspešne upravený!')
       } else {
-        const { error } = await supabase.from('products').insert([formData])
-        if (error) throw error
+        try {
+          await api.products.create(formData)
+        } catch (apiErr) {
+          const { error } = await supabase.from('products').insert([formData])
+          if (error) throw error
+        }
         toast.success('Produkt bol úspešne pridaný!')
       }
       setShowModal(false)
@@ -568,16 +576,32 @@ const Admin = () => {
 
   const handleDelete = async (id) => {
     if (!confirm('Naozaj vymazať?')) return
-    const table = view === 'products' ? 'products' : 
-                  view === 'orders' ? 'orders' : 
-                  view === 'bookings' ? 'rental_bookings' : 
-                  view === 'rentals' ? 'rental_items' : 'inquiries'
-    const { error } = await supabase.from(table).delete().match({ id })
-    if (error) {
-      toast.error('Chyba pri mazaní: ' + error.message)
-    } else {
+    try {
+      if (view === 'products') {
+        try {
+          await api.products.delete(id)
+        } catch (apiErr) {
+          const { error } = await supabase.from('products').delete().match({ id })
+          if (error) throw error
+        }
+      } else if (view === 'categories') {
+        try {
+          await api.categories.delete(id)
+        } catch (apiErr) {
+          const { error } = await supabase.from('categories').delete().match({ id })
+          if (error) throw error
+        }
+      } else {
+        const table = view === 'orders' ? 'orders' : 
+                      view === 'bookings' ? 'rental_bookings' : 
+                      view === 'rentals' ? 'rental_items' : 'inquiries'
+        const { error } = await supabase.from(table).delete().match({ id })
+        if (error) throw error
+      }
       toast.success('Položka bola úspešne vymazaná.')
       fetchData()
+    } catch (error) {
+      toast.error('Chyba pri mazaní: ' + error.message)
     }
   }
 
