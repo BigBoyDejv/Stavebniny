@@ -198,6 +198,10 @@ const Catalog = () => {
                         src={product.image_url || getPlaceholderImage(product.category, 'material')}
                         alt={product.name}
                         className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = getPlaceholderImage(product.category, 'material');
+                        }}
                       />
                       {product.stock_quantity <= 0 && (
                         <div className="absolute top-4 left-4 bg-error text-white text-[8px] font-black uppercase px-2 py-1">Vypredané</div>

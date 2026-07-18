@@ -158,6 +158,13 @@ const Admin = () => {
   }
 
   const fetchCategories = async () => {
+    try {
+      const data = await api.categories.getAll()
+      if (data && Array.isArray(data)) {
+        setCategories(data)
+        return
+      }
+    } catch (e) {}
     const { data } = await supabase.from('categories').select('*').order('name')
     setCategories(data || [])
   }
@@ -168,8 +175,45 @@ const Admin = () => {
       setLoading(false)
       return
     }
+
+    try {
+      if (view === 'products') {
+        const data = await api.products.getAll()
+        if (data && Array.isArray(data)) {
+          setData(data)
+          fetchCategories()
+          setLoading(false)
+          return
+        }
+      } else if (view === 'categories') {
+        const data = await api.categories.getAll()
+        if (data && Array.isArray(data)) {
+          setData(data)
+          setLoading(false)
+          return
+        }
+      } else if (view === 'rentals') {
+        const data = await api.rental.getItems()
+        if (data && Array.isArray(data)) {
+          setData(data)
+          setLoading(false)
+          return
+        }
+      } else if (view === 'bookings') {
+        const data = await api.rental.getBookings()
+        if (data && Array.isArray(data)) {
+          setData(data)
+          const items = await api.rental.getItems()
+          if (items) setRentalItemsList(items)
+          setLoading(false)
+          return
+        }
+      }
+    } catch (apiErr) {
+      console.warn('API fetch failed, falling back to Supabase:', apiErr)
+    }
     
-    // Updated table logic to include categories & rentals
+    // Fallback to Supabase
     let query;
     if (view === 'bookings') {
       query = supabase
@@ -208,21 +252,19 @@ const Admin = () => {
 
     try {
       const file = await compressImage(rawFile, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 })
-      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.webp`
-      const filePath = `${fileName}`
-
-      const { data, error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        })
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath)
+      let publicUrl = ''
+      try {
+        publicUrl = await api.uploadImage(file)
+      } catch (uploadErr) {
+        console.warn('API upload failed, trying Supabase Storage:', uploadErr)
+        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.webp`
+        const { error: sbUploadError } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, file, { cacheControl: '3600', upsert: true })
+        if (sbUploadError) throw sbUploadError
+        const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName)
+        publicUrl = urlData.publicUrl
+      }
 
       if (type === 'rental') {
         setRentalFormData(prev => ({ ...prev, image_url: publicUrl }))

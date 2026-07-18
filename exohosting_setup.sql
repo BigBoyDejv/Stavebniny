@@ -66,7 +66,12 @@ INSERT INTO products (name, description, price, category, sku, stock_quantity, i
 ('Kuprikol 50 (100g)', 'Tradičný mednatý prípravok vo forme zmáčateľného prášku na ochranu rastlín.', 4.80, 'Postreky', 'AGR-POS-KUP', 50, '/images/products/cement.png', 'agriculture', 'balenie'),
 ('Bofix (100ml)', 'Selektívny systémový herbicíd na ničenie dvojklíčnolistových burín.', 8.50, 'Postreky', 'AGR-POS-BOF', 30, '/images/products/cement.png', 'agriculture', 'balenie'),
 ('Záhradné hrable kovové (14 zubov)', 'Kvalitné kovové hrable s drevenou násadou.', 12.90, 'Hrable a náradie', 'AGR-NAR-HRA', 25, '/images/products/concrete.png', 'agriculture', 'ks'),
-('Záhradná lopata Fiskars', 'Ergonomická špicatá lopata s kovovou násadou.', 24.50, 'Hrable a náradie', 'AGR-NAR-LOP', 15, '/images/products/concrete.png', 'agriculture', 'ks')
+('Záhradná lopata Fiskars', 'Ergonomická špicatá lopata s kovovou násadou.', 24.50, 'Hrable a náradie', 'AGR-NAR-LOP', 15, '/images/products/concrete.png', 'agriculture', 'ks'),
+('Parozábrana (75m2)', 'Hliníková reflexná parotesná fólia pre podkrovia.', 38.90, 'Izolácie', 'ISO-PARO', 40, '/images/products/insulation.png', 'material', 'rolka'),
+('Geotextília 200g (m2)', 'Netkaná geotextília pod drenáže a zámkovú dlažbu.', 0.85, 'Izolácie', 'GEO-200', 500, '/images/products/insulation.png', 'material', 'm2'),
+('Betón B20 (25kg)', 'Suchá betónová zmes pre potery a základy.', 3.90, 'Hrubá stavba', 'BET-B20', 400, '/images/products/cement.png', 'material', 'balenie'),
+('UD Profil 3m', 'Obvodový oceľový profil pre sadrokartón.', 2.60, 'Suchá výstavba', 'PRO-UD3', 180, '/images/products/concrete.png', 'material', 'ks'),
+('Strešný asfaltový pás', 'Hydroizolačný natavovací pás V60 S35.', 29.90, 'Strechy', 'STR-ASF', 60, '/images/products/brick.png', 'material', 'rolka')
 ON CONFLICT (sku) DO UPDATE SET
   image_url = EXCLUDED.image_url;
 
