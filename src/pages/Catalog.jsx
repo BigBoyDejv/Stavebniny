@@ -195,15 +195,23 @@ const Catalog = () => {
                   >
                     {/* Image container */}
                     <div className="relative aspect-square overflow-hidden p-6 bg-[#fcfcfc] flex items-center justify-center">
-                      <img
-                        src={product.image_url || getPlaceholderImage(product.category, 'material')}
-                        alt={product.name}
-                        className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = getPlaceholderImage(product.category, 'material');
-                        }}
-                      />
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div 
+                        className="w-full h-full flex items-center justify-center text-outline/20"
+                        style={{ display: product.image_url ? 'none' : 'flex' }}
+                      >
+                        <Package size={48} strokeWidth={1} />
+                      </div>
                       {product.stock_quantity <= 0 && (
                         <div className="absolute top-4 left-4 bg-error text-white text-[8px] font-black uppercase px-2 py-1 z-10">Vypredané</div>
                       )}
