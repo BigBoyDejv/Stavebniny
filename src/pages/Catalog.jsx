@@ -215,16 +215,14 @@ const Catalog = () => {
 
                     {/* Info container */}
                     <div className="p-6 flex flex-col flex-grow bg-white">
-                      <h3 className="text-sm font-medium text-on-surface leading-snug mb-2 line-clamp-2 h-10 group-hover:text-primary transition-colors">
+                      <h3 className="text-sm font-medium text-on-surface leading-snug mb-4 line-clamp-2 h-10 group-hover:text-primary transition-colors">
                         {product.name}
                       </h3>
 
-                      {/* Rating placeholder */}
-                      <div className="flex gap-0.5 mb-8 h-4">
-                        {/* Rating removed as per business model */}
-                      </div>
-
-                      <div className="mt-auto flex justify-end items-end">
+                      <div className="mt-auto pt-4 flex justify-between items-center border-t border-outline/5">
+                        <span className="text-[10px] uppercase font-bold text-outline">
+                          {product.sku || 'SKU'}
+                        </span>
                         <button
                           onClick={(e) => { e.stopPropagation(); addToCart(product); }}
                           className="px-4 py-3 bg-surface hover:bg-primary hover:text-on-primary transition-all active:scale-95 text-xs font-bold uppercase tracking-widest flex items-center gap-2"
