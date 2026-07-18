@@ -15,7 +15,7 @@ session_start();
 $db_host = 'pgsql1.dnsserver.eu'; // alebo localhost podľa ExoHostingu
 $db_name = 'db73659xstavebniny';
 $db_user = 'db73659xstavebniny';
-$db_pass = 'Lkstav15Lub5.'; // Použije sa heslo generované na ExoHostingu
+$db_pass = 'Lkstav15Lub5.'; // Heslo vygenerované na ExoHostingu
 
 try {
     $dsn = "pgsql:host=$db_host;dbname=$db_name";
@@ -24,7 +24,6 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
 } catch (PDOException $e) {
-    // V prípade, že pgsql driver na hostingu beží cez localhost:
     try {
         $dsn_local = "pgsql:host=localhost;dbname=$db_name";
         $pdo = new PDO($dsn_local, $db_user, $db_pass, [
@@ -39,8 +38,15 @@ try {
 }
 
 function getJsonInput() {
-    $input = file_get_contents('php://input');
-    return json_decode($input, true) ?: [];
+    $raw = file_get_contents('php://input');
+    $json = json_decode($raw, true);
+    if (is_array($json) && !empty($json)) {
+        return $json;
+    }
+    if (!empty($_POST)) {
+        return $_POST;
+    }
+    return [];
 }
 
 function checkAdminAuth() {

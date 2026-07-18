@@ -4,7 +4,8 @@ require_once __DIR__ . '/config.php';
 header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? '';
+$input = getJsonInput();
+$action = $_GET['action'] ?? $_POST['action'] ?? ($input['action'] ?? '');
 
 if ($method === 'GET' && $action === 'session') {
     if (!empty($_SESSION['admin_id'])) {
@@ -22,10 +23,9 @@ if ($method === 'GET' && $action === 'session') {
     exit();
 }
 
-if ($method === 'POST' && $action === 'login') {
-    $input = getJsonInput();
-    $email = trim($input['email'] ?? '');
-    $password = $input['password'] ?? '';
+if ($method === 'POST' && ($action === 'login' || isset($input['email']))) {
+    $email = trim($input['email'] ?? $_POST['email'] ?? '');
+    $password = $input['password'] ?? $_POST['password'] ?? '';
 
     if (!$email || !$password) {
         http_response_code(400);
@@ -35,18 +35,15 @@ if ($method === 'POST' && $action === 'login') {
 
     $hash = hash('sha256', $password);
 
-    // Skontrolujeme, či existuje nejaký admin v tabuľke
     try {
         $stmtCount = $pdo->query("SELECT COUNT(*) FROM admins");
         $count = $stmtCount->fetchColumn();
 
         if ($count == 0) {
-            // Ak je tabuľka admins prázdna, automaticky vytvoríme prvého admina
             $stmtInsert = $pdo->prepare("INSERT INTO admins (email, password_hash) VALUES (:email, :hash) RETURNING id, email");
             $stmtInsert->execute(['email' => $email, 'hash' => $hash]);
             $admin = $stmtInsert->fetch();
         } else {
-            // Overenie prihlasovacích údajov
             $stmt = $pdo->prepare("SELECT id, email FROM admins WHERE LOWER(email) = LOWER(:email) AND (password_hash = :hash OR password_hash = :raw)");
             $stmt->execute(['email' => $email, 'hash' => $hash, 'raw' => $password]);
             $admin = $stmt->fetch();
