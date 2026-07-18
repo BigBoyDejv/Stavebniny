@@ -192,7 +192,7 @@ const Catalog = () => {
                     onClick={() => { setSelectedProduct(product); setModalQty(1); }}
                   >
                     {/* Image container */}
-                    <div className="relative aspect-square overflow-hidden p-6 bg-[#fcfcfc] flex items-center justify-center">
+                    <div className="relative aspect-square p-8 bg-[#fafafa] overflow-hidden flex items-center justify-center">
                       {product.image_url ? (
                         <img
                           src={product.image_url}
@@ -210,26 +210,22 @@ const Catalog = () => {
                       >
                         <Package size={48} strokeWidth={1} />
                       </div>
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                        <span className="bg-white text-on-surface px-4 py-2 font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5 shadow-lg">
+                          <Eye size={12} /> Náhľad
+                        </span>
+                      </div>
                       {product.stock_quantity <= 0 && (
                         <div className="absolute top-4 left-4 bg-error text-white text-[8px] font-black uppercase px-2 py-1 z-10">Vypredané</div>
-                      )}
-                      {product.category && (
-                        <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm text-on-surface text-[8px] font-bold uppercase px-2 py-1 border border-outline/10 z-10">
-                          {product.category}
-                        </div>
                       )}
                     </div>
 
                     {/* Info container */}
-                    <div className="p-6 flex flex-col flex-grow bg-white">
-                      <h3 className="text-sm font-medium text-on-surface leading-snug mb-4 line-clamp-2 h-10 group-hover:text-primary transition-colors">
-                        {product.name}
-                      </h3>
+                    <div className="p-8 flex flex-col flex-grow">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-primary-strong mb-2">{product.category || 'Materiál'}</span>
+                      <h3 className="text-lg font-bold mb-6 line-clamp-2 h-14 group-hover:text-primary transition-colors">{product.name}</h3>
 
-                      <div className="mt-auto pt-4 flex justify-between items-center border-t border-outline/5">
-                        <span className="text-[10px] uppercase font-bold text-outline">
-                          {product.sku || 'SKU'}
-                        </span>
+                      <div className="mt-auto flex justify-end items-end">
                         <button
                           onClick={(e) => { e.stopPropagation(); addToCart(product); }}
                           className="px-4 py-3 bg-surface hover:bg-primary hover:text-on-primary transition-all active:scale-95 text-xs font-bold uppercase tracking-widest flex items-center gap-2"
