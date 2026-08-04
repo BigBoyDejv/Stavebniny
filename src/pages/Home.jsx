@@ -28,16 +28,16 @@ const Home = () => {
   }
 
   return (
-    <div className="pt-20">
+    <div className="pt-16 sm:pt-20 overflow-x-hidden">
       {/* Announcement Alert Banner */}
       {settings.hours_alert_enabled === 'true' && settings.hours_alert_message && (
-        <div className={`w-full py-5 px-8 flex items-center border-b border-outline/10 transition-all duration-300 ${
+        <div className={`w-full py-4 sm:py-5 px-4 sm:px-8 flex items-center border-b border-outline/10 transition-all duration-300 ${
           settings.hours_alert_type === 'warning' ? 'bg-amber-550/15 border-amber-500/30 text-amber-950' :
           settings.hours_alert_type === 'error' ? 'bg-red-500/10 border-red-500/20 text-red-950' :
           'bg-primary/10 border-primary/20 text-[#546200]'
         }`}>
-          <div className="max-w-[1440px] mx-auto w-full flex items-center gap-4">
-            <span className="material-symbols-outlined text-2xl shrink-0 animate-pulse">
+          <div className="max-w-[1440px] mx-auto w-full flex items-center gap-3">
+            <span className="material-symbols-outlined text-xl sm:text-2xl shrink-0 animate-pulse">
               {settings.hours_alert_type === 'warning' ? 'warning' : 
                settings.hours_alert_type === 'error' ? 'error_outline' : 'campaign'}
             </span>
@@ -55,37 +55,37 @@ const Home = () => {
         type="image"
         label="Hero Pozadie"
         as="section"
-        className="relative h-[80vh] flex items-center overflow-hidden"
+        className="relative min-h-[75vh] py-16 sm:py-24 flex items-center overflow-hidden"
       >
         <div className="absolute inset-0 z-0">
           <img
             className="w-full h-full object-cover"
             src={settings.home_hero_bg}
-            alt="Hero Warehouse"
+            alt="Hero Background"
           />
           <div className="absolute inset-0 bg-black/40 pointer-events-none"></div>
         </div>
-        <div className="relative z-10 max-w-[1440px] mx-auto px-8 w-full">
+        <div className="relative z-10 max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8 w-full">
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
             className="max-w-3xl"
           >
-            <span className="inline-block font-label text-[0.75rem] font-bold text-primary uppercase tracking-[0.3em] mb-6 border-b-2 border-primary/30 pb-1">Stavebniny Ľubeľa</span>
+            <span className="inline-block font-label text-[0.7rem] sm:text-[0.75rem] font-bold text-primary uppercase tracking-[0.3em] mb-4 sm:mb-6 border-b-2 border-primary/30 pb-1">Stavebniny Ľubeľa</span>
             <Editable settingKey="home_hero_title" value={settings.home_hero_title} type="text" label="Hero Nadpis">
-              <h1 className="font-headline text-5xl md:text-8xl font-black text-white mb-10 leading-[0.9] tracking-tighter">
+              <h1 className="font-headline text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 sm:mb-10 leading-[0.95] tracking-tighter break-words">
                 {formatTitle(settings.home_hero_title)}
               </h1>
             </Editable>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/materialy" className="bg-primary text-on-primary px-8 py-4 font-label font-bold tracking-wide flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <Link to="/materialy" className="bg-primary text-on-primary px-6 sm:px-8 py-3.5 sm:py-4 font-label font-bold text-xs sm:text-sm tracking-wide flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-transform">
                 Nakupovať materiál
-                <span className="material-symbols-outlined">arrow_forward</span>
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
               </Link>
-              <Link to="/pozicovna" className="tertiary-gradient text-on-tertiary px-8 py-4 font-label font-bold tracking-wide flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+              <Link to="/pozicovna" className="tertiary-gradient text-on-tertiary px-6 sm:px-8 py-3.5 sm:py-4 font-label font-bold text-xs sm:text-sm tracking-wide flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-transform">
                 Požičať techniku
-                <span className="material-symbols-outlined">construction</span>
+                <span className="material-symbols-outlined text-sm">construction</span>
               </Link>
             </div>
           </motion.div>
@@ -93,22 +93,22 @@ const Home = () => {
       </Editable>
 
       {/* Trust Signals */}
-      <section className="bg-surface-container-low py-12">
-        <div className="max-w-[1440px] mx-auto px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <section className="bg-surface-container-low py-8 sm:py-12">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             {[
               { icon: 'local_shipping', title: 'Rýchla doprava', desc: 'Doručíme priamo na stavbu' },
               { icon: 'support_agent', title: 'Odborné poradenstvo', desc: '25+ rokov skúseností' },
               { icon: 'verified', title: 'Kvalitné materiály', desc: 'Certifikovaní dodávatelia' },
               { icon: 'calendar_today', title: 'Požičovňa 24/7', desc: 'Online rezervácia termínu' }
             ].map((item, idx) => (
-              <div key={idx} className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-primary/10 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-on-primary-container">{item.icon}</span>
+              <div key={idx} className="flex items-center gap-4 p-2">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-on-primary-container text-xl sm:text-2xl">{item.icon}</span>
                 </div>
                 <div>
-                  <p className="font-headline font-semibold text-sm">{item.title}</p>
-                  <p className="text-xs text-on-surface-variant">{item.desc}</p>
+                  <p className="font-headline font-semibold text-xs sm:text-sm">{item.title}</p>
+                  <p className="text-[11px] sm:text-xs text-on-surface-variant">{item.desc}</p>
                 </div>
               </div>
             ))}
@@ -117,18 +117,18 @@ const Home = () => {
       </section>
 
       {/* Featured Categories (Static Grid for Home) */}
-      <section className="py-24 max-w-[1440px] mx-auto px-8">
-        <div className="mb-16">
+      <section className="py-12 sm:py-24 max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8">
+        <div className="mb-8 sm:mb-16">
           <span className="font-label text-[0.75rem] font-semibold text-on-primary-container uppercase tracking-[0.2em] border-l-4 border-primary pl-4">Naša Ponuka</span>
-          <h2 className="font-headline text-4xl font-semibold mt-4">Materiály pre váš projekt</h2>
+          <h2 className="font-headline text-2xl sm:text-4xl font-semibold mt-3 sm:mt-4">Materiály pre váš projekt</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-rows-2 gap-4 md:gap-6 min-h-[500px] md:h-[700px]">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-rows-2 gap-4 md:gap-6 min-h-[400px] md:h-[700px]">
           <Link to="/materialy" className="md:col-span-2 md:row-span-2 bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-square md:aspect-auto block">
             <Editable settingKey="home_cat_hruba" value={settings.home_cat_hruba} type="image" label="Kategória: Hrubá stavba" className="w-full h-full">
               <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={settings.home_cat_hruba} alt="Hrubá stavba" />
             </Editable>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 md:p-8 pointer-events-none">
-              <h3 className="text-white font-headline text-xl md:text-2xl font-bold">Hrubá stavba</h3>
+              <h3 className="text-white font-headline text-lg sm:text-xl md:text-2xl font-bold">Hrubá stavba</h3>
               <p className="text-zinc-200 text-xs md:text-sm mt-2">Tehly, tvárnice, izolácie a ocel.</p>
               <div className="w-12 h-1 bg-primary mt-4 transform origin-left transition-transform group-hover:scale-x-150"></div>
             </div>
@@ -138,7 +138,7 @@ const Home = () => {
               <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={settings.home_cat_sucha} alt="Suchá výstavba" />
             </Editable>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 md:p-8 pointer-events-none">
-              <h3 className="text-white font-headline text-lg md:text-xl font-bold">Suchá výstavba</h3>
+              <h3 className="text-white font-headline text-base sm:text-lg md:text-xl font-bold">Suchá výstavba</h3>
               <p className="text-zinc-200 text-xs md:text-sm mt-2">Sádrokartón a omietky.</p>
             </div>
           </Link>
@@ -147,7 +147,7 @@ const Home = () => {
               <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={settings.home_cat_zahrada} alt="Záhrada" />
             </Editable>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 pointer-events-none">
-              <h3 className="text-white font-headline text-lg font-bold">Záhrada</h3>
+              <h3 className="text-white font-headline text-base sm:text-lg font-bold">Záhrada</h3>
             </div>
           </Link>
           <Link to="/farby-laky" className="bg-surface-container-lowest overflow-hidden group cursor-pointer relative aspect-square md:aspect-auto block">
@@ -155,23 +155,23 @@ const Home = () => {
               <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={settings.home_cat_farby} alt="Farby a laky" />
             </Editable>
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-6 pointer-events-none">
-              <h3 className="text-white font-headline text-lg font-bold">Farby a laky</h3>
+              <h3 className="text-white font-headline text-base sm:text-lg font-bold">Farby a laky</h3>
             </div>
           </Link>
         </div>
       </section>
 
       {/* CTA section */}
-      <section className="max-w-[1440px] mx-auto px-8 pb-24">
-        <div className="bg-primary p-12 md:p-20 text-center relative overflow-hidden">
+      <section className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8 pb-16 sm:pb-24">
+        <div className="bg-primary p-6 sm:p-12 md:p-20 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-black/5 -mr-32 -mt-32"></div>
-          <h2 className="font-headline text-3xl md:text-5xl font-black text-on-primary mb-6 relative z-10">PRIPRAVENÍ ZAČAŤ STAVAŤ?</h2>
-          <p className="text-on-primary-container text-lg mb-10 max-w-2xl mx-auto relative z-10 font-medium">
+          <h2 className="font-headline text-2xl sm:text-3xl md:text-5xl font-black text-on-primary mb-4 sm:mb-6 relative z-10">PRIPRAVENÍ ZAČAŤ STAVAŤ?</h2>
+          <p className="text-on-primary-container text-sm sm:text-lg mb-8 sm:mb-10 max-w-2xl mx-auto relative z-10 font-medium">
             Navštívte nás v Ľubeli alebo si vyžiadajte cenovú ponuku online. Sme tu pre vás každý pracovný deň.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
-            <Link to="/kontakt" className="bg-on-primary text-primary px-8 py-4 font-label font-bold tracking-wide hover:bg-zinc-800 transition-colors">Získať cenovú ponuku</Link>
-            <Link to="/materialy" className="border-2 border-on-primary text-on-primary px-8 py-4 font-label font-bold tracking-wide hover:bg-on-primary hover:text-primary transition-colors">Zobraziť materiály</Link>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center relative z-10">
+            <Link to="/kontakt" className="bg-on-primary text-primary px-6 sm:px-8 py-3.5 sm:py-4 font-label font-bold text-xs sm:text-sm tracking-wide hover:bg-zinc-800 active:scale-95 transition-all">Získať cenovú ponuku</Link>
+            <Link to="/materialy" className="border-2 border-on-primary text-on-primary px-6 sm:px-8 py-3.5 sm:py-4 font-label font-bold text-xs sm:text-sm tracking-wide hover:bg-on-primary hover:text-primary active:scale-95 transition-all">Zobraziť materiály</Link>
           </div>
         </div>
       </section>

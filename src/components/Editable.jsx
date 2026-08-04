@@ -4,6 +4,7 @@ import { Edit2, Check, X, Loader2, Upload } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
 import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { toast } from 'react-hot-toast'
 import { compressImage } from '../lib/utils'
 
@@ -27,14 +28,11 @@ export const Editable = ({
     return <Component className={className}>{children}</Component>
   }
 
-  const handleSave = async () => {
+  const handleSave = async (customValue) => {
+    const valueToSave = (typeof customValue === 'string' || typeof customValue === 'number') ? customValue : editValue
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('site_settings')
-        .upsert({ key: settingKey, value: editValue })
-      
-      if (error) throw error
+      await api.settings.update({ [settingKey]: valueToSave })
       
       toast.success(`${label || 'Nastavenie'} úspešne upravené!`, {
         style: {
@@ -44,7 +42,7 @@ export const Editable = ({
           fontWeight: 'bold',
         }
       })
-      updateSettingState(settingKey, editValue)
+      updateSettingState(settingKey, valueToSave)
       setIsEditing(false)
     } catch (err) {
       toast.error('Chyba pri ukladaní: ' + err.message)
@@ -66,20 +64,35 @@ export const Editable = ({
       }
     })
     try {
-      const file = await compressImage(rawFile, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 })
-      const fileName = `settings_${settingKey}_${Math.random().toString(36).substring(2, 10)}.webp`
-      const { data, error } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, file, { cacheControl: '3600', upsert: true })
+      const isHeroOrBg = settingKey.toLowerCase().includes('hero') || settingKey.toLowerCase().includes('bg') || settingKey.toLowerCase().includes('banner')
+      const file = isHeroOrBg 
+        ? rawFile 
+        : await compressImage(rawFile, { maxWidth: 1920, maxHeight: 1920, quality: 0.90 })
+      
+      let publicUrl = ''
+      try {
+        publicUrl = await api.uploadImage(file)
+      } catch (uploadErr) {
+        console.warn('api.uploadImage failed, using direct Supabase storage fallback:', uploadErr)
+        const ext = file.name.split('.').pop() || 'webp'
+        const fileName = `settings_${settingKey}_${Math.random().toString(36).substring(2, 10)}.${ext}`
+        const { error } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, file, { cacheControl: '3600', upsert: true })
 
-      if (error) throw error
+        if (error) throw error
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(fileName)
+        const { data: { publicUrl: url } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName)
+        publicUrl = url
+      }
 
       setEditValue(publicUrl)
-      toast.success('Fotka úspešne nahratá a skomprimovaná!', { id: toastId })
+      // Save directly to database so refresh keeps the new image
+      await api.settings.update({ [settingKey]: publicUrl })
+      updateSettingState(settingKey, publicUrl)
+      toast.success('Fotka úspešne nahratá a uložená!', { id: toastId })
     } catch (err) {
       toast.error('Chyba nahrávania: ' + err.message, { id: toastId })
     } finally {
@@ -182,7 +195,7 @@ export const Editable = ({
 
             <div className="flex gap-3 pt-2">
               <button
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 disabled={loading || uploading}
                 className="flex-1 bg-primary text-on-primary py-4 font-black uppercase tracking-widest text-xs hover:bg-[#daf900] disabled:opacity-50 flex items-center justify-center gap-2"
               >

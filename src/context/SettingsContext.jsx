@@ -26,17 +26,36 @@ const defaultSettings = {
 }
 
 export const SettingsProvider = ({ children }) => {
-  const [settings, setSettings] = useState(defaultSettings)
+  const [settings, setSettings] = useState(() => {
+    try {
+      const cached = localStorage.getItem('site_settings_cache')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed && Object.keys(parsed).length > 0) {
+          return { ...defaultSettings, ...parsed }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse settings cache:', e)
+    }
+    return defaultSettings
+  })
   const [loading, setLoading] = useState(true)
 
   const fetchSettings = async () => {
     try {
       const data = await api.settings.get()
       if (data && Object.keys(data).length > 0) {
-        setSettings(prev => ({ ...prev, ...data }))
+        setSettings(prev => {
+          const updated = { ...prev, ...data }
+          try {
+            localStorage.setItem('site_settings_cache', JSON.stringify(updated))
+          } catch (e) {}
+          return updated
+        })
       }
     } catch (err) {
-      console.error('Error fetching settings from ExoHosting API:', err)
+      console.error('Error fetching settings from API:', err)
     } finally {
       setLoading(false)
     }
@@ -47,7 +66,13 @@ export const SettingsProvider = ({ children }) => {
   }, [])
 
   const updateSettingState = (key, value) => {
-    setSettings(prev => ({ ...prev, [key]: value }))
+    setSettings(prev => {
+      const updated = { ...prev, [key]: value }
+      try {
+        localStorage.setItem('site_settings_cache', JSON.stringify(updated))
+      } catch (e) {}
+      return updated
+    })
   }
 
   return (
@@ -57,4 +82,15 @@ export const SettingsProvider = ({ children }) => {
   )
 }
 
-export const useSettings = () => useContext(SettingsContext)
+export const useSettings = () => {
+  const context = useContext(SettingsContext)
+  if (!context) {
+    return {
+      settings: defaultSettings,
+      updateSettingState: () => {},
+      loading: false,
+      refreshSettings: () => {}
+    }
+  }
+  return context
+}

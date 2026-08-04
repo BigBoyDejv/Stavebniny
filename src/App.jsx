@@ -1,5 +1,5 @@
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { SettingsProvider } from './context/SettingsContext'
 import { CartProvider } from './context/CartContext'
@@ -19,6 +19,21 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CartDrawer from './components/CartDrawer'
 import { Toaster } from 'react-hot-toast'
+import { Agentation } from 'agentation'
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'instant'
+    })
+  }, [pathname])
+
+  return null
+}
 
 function App() {
   return (
@@ -26,6 +41,7 @@ function App() {
       <SettingsProvider>
         <CartProvider>
           <Router>
+            <ScrollToTop />
             <div className="flex flex-col min-h-screen">
               <Toaster position="bottom-right" />
               <Navbar />
@@ -48,6 +64,7 @@ function App() {
                 </Routes>
               </main>
               <Footer />
+              {(import.meta.env.DEV || process.env.NODE_ENV === 'development') && <Agentation />}
             </div>
           </Router>
         </CartProvider>

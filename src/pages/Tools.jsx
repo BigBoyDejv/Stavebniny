@@ -38,7 +38,8 @@ const Tools = () => {
     try {
       const data = await api.products.getAll()
       if (data && Array.isArray(data)) {
-        setProducts(data.filter(p => p.type === 'tool' && p.category !== 'Farby a laky'))
+        const toolCategories = ['Ručné náradie', 'Elektrické náradie', 'Vrtačky', 'Pomocky', 'Ochranné pomôcky']
+        setProducts(data.filter(p => (p.type === 'tool' || toolCategories.includes(p.category)) && p.category !== 'Farby a laky'))
       }
     } catch (error) {
       console.error('Error fetching tools:', error)
@@ -59,18 +60,18 @@ const Tools = () => {
   })
 
   return (
-    <div className="pt-28 pb-16 px-8 max-w-[1440px] mx-auto min-h-screen">
-      <nav className="flex items-center gap-2 mb-8 text-sm font-label tracking-wide text-on-surface-variant">
+    <div className="pt-20 sm:pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto min-h-screen">
+      <nav className="flex items-center gap-2 mb-8 text-[10px] md:text-sm font-label tracking-wide text-on-surface-variant">
         <Link className="hover:text-primary transition-colors" to="/">DOMOV</Link>
         <ChevronRight size={14} />
         <span className="text-on-surface font-semibold uppercase">NÁRADIE</span>
       </nav>
 
-      <section className="mb-16">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-12">
+      <section className="mb-12 sm:mb-16">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-12">
           <div className="max-w-3xl">
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 uppercase">Náradie</h1>
-            <p className="text-lg text-on-surface-variant max-w-xl font-medium border-l-4 border-primary pl-6">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl font-black tracking-tighter mb-4 sm:mb-6 uppercase break-words">Náradie</h1>
+            <p className="text-sm sm:text-lg text-on-surface-variant max-w-xl font-medium border-l-4 border-primary pl-4 sm:pl-6">
               Profesionálne ručné a elektrické náradie a ochranné pomôcky pre vašu prácu.
             </p>
           </div>
@@ -80,11 +81,11 @@ const Tools = () => {
               <input
                 type="text"
                 placeholder="Hľadať náradie..."
-                className="w-full md:w-80 bg-white p-5 pl-12 text-sm font-bold uppercase tracking-widest border-b-2 border-outline/10 focus:border-primary outline-none transition-all"
+                className="w-full md:w-80 bg-white py-5 pr-5 !pl-14 text-sm font-bold uppercase tracking-wider border-b-2 border-outline/10 focus:border-primary outline-none transition-all"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
-              <Search className="absolute left-4 top-5 text-outline/40 group-hover:text-primary transition-colors" size={20} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/40 group-hover:text-primary transition-colors pointer-events-none" size={20} />
             </div>
           </div>
         </div>
@@ -202,15 +203,6 @@ const Tools = () => {
                 <h2 className="text-2xl md:text-5xl font-black tracking-tighter mb-4 md:mb-6 leading-none">
                   {selectedProduct.name}
                 </h2>
-
-                <div className="flex items-center gap-6 mb-10">
-                  <div className={cn(
-                    "px-3 py-1 text-[10px] font-black uppercase tracking-widest border-2",
-                    selectedProduct.stock_quantity > 0 ? "border-emerald-500 text-emerald-600" : "border-zinc-300 text-zinc-400"
-                  )}>
-                    {selectedProduct.stock_quantity > 0 ? `SKLADOM ${selectedProduct.stock_quantity} ${selectedProduct.unit ? selectedProduct.unit.toUpperCase() : 'KS'}` : "NA OBJEDNÁVKU"}
-                  </div>
-                </div>
 
                 <div className="prose prose-sm text-on-surface-variant leading-relaxed mb-12 font-medium">
                   {selectedProduct.description ? (

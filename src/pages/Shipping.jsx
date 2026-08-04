@@ -75,14 +75,14 @@ const Shipping = () => {
   const thirdPartyResult = calculateThirdPartyShipping(thirdPartyZone);
 
   return (
-    <div className="pt-28 pb-20 px-4 md:px-8 max-w-[1200px] mx-auto min-h-screen">
-      <h1 className="text-4xl md:text-5xl font-black mb-8 tracking-tight uppercase">DOPRAVA A PLATBA</h1>
+    <div className="pt-20 sm:pt-28 pb-16 px-4 sm:px-6 md:px-8 max-w-[1200px] mx-auto min-h-screen">
+      <h1 className="text-3xl sm:text-5xl font-black mb-6 sm:mb-8 tracking-tight uppercase break-words">DOPRAVA A PLATBA</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-16">
-        <section className="bg-white p-8 border border-outline/10 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mb-12 sm:mb-16">
+        <section className="bg-white p-5 sm:p-8 border border-outline/10 shadow-sm rounded-lg">
           <div className="flex items-center gap-3 mb-6">
-            <Truck className="text-primary-strong w-8 h-8" />
-            <h2 className="text-2xl font-black uppercase tracking-tight">Možnosti dopravy</h2>
+            <Truck className="text-primary-strong w-7 h-7 sm:w-8 sm:h-8 shrink-0" />
+            <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight">Možnosti dopravy</h2>
           </div>
           <ul className="space-y-4">
             <li className="bg-surface p-6 border-l-4 border-primary shadow-sm">

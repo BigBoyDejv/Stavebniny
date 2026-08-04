@@ -120,15 +120,15 @@ ${itemsList}`;
 
   if (success) {
     return (
-      <div className="pt-40 pb-20 px-8 flex flex-col items-center justify-center text-center min-h-[70vh]">
-        <div className="bg-emerald-100 text-emerald-600 p-6 rounded-full mb-8">
-           <CheckCircle size={64} />
+      <div className="pt-24 sm:pt-36 pb-16 px-4 sm:px-6 flex flex-col items-center justify-center text-center min-h-[70vh]">
+        <div className="bg-emerald-100 text-emerald-600 p-5 rounded-full mb-6">
+           <CheckCircle size={56} />
         </div>
-        <h1 className="text-4xl font-black mb-4 uppercase">Dopyt bol odoslaný!</h1>
-        <p className="text-on-surface-variant max-w-md mb-12 uppercase text-[10px] font-bold tracking-widest leading-loose">
+        <h1 className="text-2xl sm:text-4xl font-black mb-4 uppercase">Dopyt bol odoslaný!</h1>
+        <p className="text-on-surface-variant max-w-md mb-10 uppercase text-[10px] font-bold tracking-widest leading-loose">
           Vaša požiadavka na materiál bola úspešne odoslaná. Čoskoro vás budeme kontaktovať s cenovou ponukou a možnosťami doručenia.
         </p>
-        <Link to="/" className="bg-[#2d2f2b] text-primary px-10 py-5 font-black uppercase text-sm tracking-widest hover:scale-[1.02] transition-transform">
+        <Link to="/" className="bg-[#2d2f2b] text-primary px-8 py-4 font-black uppercase text-xs sm:text-sm tracking-widest hover:scale-[1.02] transition-transform">
           Späť na úvod
         </Link>
       </div>
@@ -137,10 +137,10 @@ ${itemsList}`;
 
   if (cart.length === 0) {
     return (
-      <div className="pt-40 pb-20 px-8 flex flex-col items-center justify-center text-center min-h-[70vh]">
-        <h1 className="text-4xl font-black mb-4 uppercase">Váš dopyt je prázdny</h1>
-        <p className="text-on-surface-variant mb-12 font-medium">Nevybrali ste si zatiaľ žiadny tovar pre nacenenie.</p>
-        <Link to="/katalog" className="bg-primary text-on-primary px-10 py-5 font-black uppercase tracking-widest hover:bg-[#daf900] transition-colors">
+      <div className="pt-24 sm:pt-36 pb-16 px-4 sm:px-6 flex flex-col items-center justify-center text-center min-h-[70vh]">
+        <h1 className="text-2xl sm:text-4xl font-black mb-4 uppercase">Váš dopyt je prázdny</h1>
+        <p className="text-on-surface-variant mb-10 font-medium text-sm sm:text-base">Nevybrali ste si zatiaľ žiadny tovar pre nacenenie.</p>
+        <Link to="/materialy" className="bg-primary text-on-primary px-8 py-4 font-black uppercase tracking-widest hover:bg-[#daf900] transition-colors text-xs sm:text-sm">
           Prezerať katalóg
         </Link>
       </div>
@@ -148,16 +148,16 @@ ${itemsList}`;
   }
 
   return (
-    <div className="pt-28 pb-20 px-8 max-w-[1440px] mx-auto min-h-screen">
-      <nav className="flex items-center gap-2 mb-12 text-sm font-label tracking-wide text-on-surface-variant">
+    <div className="pt-20 sm:pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto min-h-screen">
+      <nav className="flex items-center gap-2 mb-8 text-[10px] md:text-sm font-label tracking-wide text-on-surface-variant">
         <Link className="hover:text-primary transition-colors" to="/">DOMOV</Link>
         <ChevronRight size={14} />
         <span className="text-on-surface font-semibold uppercase">ODOSLANIE DOPYTU</span>
       </nav>
 
-      <div className="mb-12">
-        <h1 className="text-5xl font-black tracking-tighter mb-4 uppercase">Váš Dopyt</h1>
-        <p className="text-lg text-on-surface-variant border-l-4 border-primary pl-4 font-medium">
+      <div className="mb-8 sm:mb-12">
+        <h1 className="text-3xl sm:text-5xl font-black tracking-tighter mb-3 sm:mb-4 uppercase">Váš Dopyt</h1>
+        <p className="text-sm sm:text-lg text-on-surface-variant border-l-4 border-primary pl-4 font-medium">
           Vyplňte kontaktné údaje a my vám obratom zašleme nezáväznú cenovú ponuku.
         </p>
       </div>

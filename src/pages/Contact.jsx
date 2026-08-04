@@ -62,31 +62,31 @@ const Contact = () => {
   ]
 
   return (
-    <div className="pt-32 pb-24 bg-surface min-h-screen">
-      <div className="max-w-[1920px] mx-auto px-6 md:px-12 lg:px-24">
+    <div className="pt-20 sm:pt-28 pb-16 sm:pb-24 bg-surface min-h-screen">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 md:px-12 lg:px-24">
 
         {/* Header Section */}
-        <header className="mb-20">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12 border-b border-outline pb-12">
+        <header className="mb-12 sm:mb-20">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 sm:gap-12 border-b border-outline pb-8 sm:pb-12">
             <div className="max-w-4xl">
-              <span className="text-primary-strong font-black uppercase tracking-[0.4em] text-[10px] mb-6 block border-l-4 border-primary pl-4">Konzultácie & Expertíza</span>
-              <h1 className="text-6xl md:text-9xl font-black tracking-tighter mb-8 leading-[0.85] uppercase">
+              <span className="text-primary-strong font-black uppercase tracking-[0.3em] sm:tracking-[0.4em] text-[10px] mb-4 sm:mb-6 block border-l-4 border-primary pl-4">Konzultácie & Expertíza</span>
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-black tracking-tighter mb-4 sm:mb-8 leading-[1.0] uppercase break-words">
                 PROFESIONÁLNA <br /> <span className="text-gradient">PODPORA</span>
               </h1>
-              <p className="text-lg md:text-xl text-on-surface-variant font-medium max-w-2xl leading-relaxed">
+              <p className="text-sm sm:text-lg md:text-xl text-on-surface-variant font-medium max-w-2xl leading-relaxed">
                 Sme tu, aby sme vám pomohli s každým technickým detailom vášho projektu. Od výberu materiálu až po logistiku na stavbe.
               </p>
             </div>
 
             <div className="flex flex-col gap-6">
-              <div className="flex items-center gap-6">
-                <div className="bg-on-surface text-primary p-5 rounded-full">
-                  <Headphones size={32} />
+              <div className="flex items-center gap-4 sm:gap-6">
+                <div className="bg-on-surface text-primary p-4 sm:p-5 rounded-full shrink-0">
+                  <Headphones size={28} />
                 </div>
                 <div>
                   <span className="block text-[10px] font-black uppercase text-outline tracking-widest mb-1">TECHNICKÁ LINKA</span>
                   <Editable settingKey="contact_phone" value={settings.contact_phone} type="text" label="Technická linka">
-                    <a href={`tel:${settings.contact_phone}`} className="text-3xl font-black tracking-tighter hover:text-primary-strong transition-colors">
+                    <a href={`tel:${settings.contact_phone}`} className="text-xl sm:text-3xl font-black tracking-tighter hover:text-primary-strong transition-colors">
                       {settings.contact_phone}
                     </a>
                   </Editable>
@@ -96,15 +96,15 @@ const Contact = () => {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-20">
 
           {/* Left Column: Form & Call to Actions */}
-          <div className="lg:col-span-7 space-y-16">
-            <section className="bg-white border border-outline p-8 lg:p-16 shadow-2xl relative overflow-hidden">
+          <div className="lg:col-span-7 space-y-10 sm:space-y-16">
+            <section className="bg-white border border-outline p-5 sm:p-8 lg:p-16 shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 -mr-16 -mt-16 rounded-full blur-3xl"></div>
 
-              <h2 className="text-4xl font-black uppercase tracking-tighter mb-12 flex items-center gap-4">
-                <Send className="text-primary-strong" /> KONZULTAČNÝ FORMULÁR
+              <h2 className="text-xl sm:text-3xl md:text-4xl font-black uppercase tracking-tighter mb-8 sm:mb-12 flex items-center gap-3">
+                <Send className="text-primary-strong" size={24} /> KONZULTAČNÝ FORMULÁR
               </h2>
 
               {sent ? (

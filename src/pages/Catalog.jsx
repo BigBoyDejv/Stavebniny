@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronRight, Grid2x2, List, PlusCircle, ShoppingCart, Star, Loader2, Search, CheckCircle2, Eye, X, Plus, Minus, Package } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { ChevronRight, ShoppingCart, Search, Eye, X, Plus, Minus, Filter } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCart } from '../context/CartContext'
 import { cn, getPlaceholderImage } from '../lib/utils'
@@ -15,7 +14,7 @@ const Catalog = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
-  const [sortBy, setSortBy] = useState('newest') // newest, price-asc, price-desc, name-asc
+  const [sortBy, setSortBy] = useState('newest') // newest, name-asc
   const [modalQty, setModalQty] = useState(1)
 
   useEffect(() => {
@@ -28,7 +27,8 @@ const Catalog = () => {
     try {
       const data = await api.categories.getAll()
       if (data && Array.isArray(data)) {
-        setCategories(['Všetko', ...data.map(c => c.name)])
+        const nonMaterialNames = ['Ručné náradie', 'Elektrické náradie', 'Vrtačky', 'Pomocky', 'Farby a laky', 'Krmivá', 'Hnojivá', 'Substráty', 'Osivá a semená', 'Postreky', 'Hrable a náradie']
+        setCategories(['Všetko', ...data.filter(c => c.type === 'material' || (!c.type && !nonMaterialNames.includes(c.name))).map(c => c.name)])
       }
     } catch (err) {
       console.error('Error fetching categories:', err)
@@ -39,7 +39,8 @@ const Catalog = () => {
     try {
       const data = await api.products.getAll()
       if (data && Array.isArray(data)) {
-        setProducts(data)
+        const nonMaterialNames = ['Ručné náradie', 'Elektrické náradie', 'Vrtačky', 'Pomocky', 'Farby a laky', 'Krmivá', 'Hnojivá', 'Substráty', 'Osivá a semená', 'Postreky', 'Hrable a náradie']
+        setProducts(data.filter(p => p.type === 'material' || (!p.type && !nonMaterialNames.includes(p.category))))
       }
     } catch (err) {
       console.error('Error fetching products:', err)
@@ -48,163 +49,130 @@ const Catalog = () => {
     }
   }
 
-
   const filteredProducts = products.filter(product => {
-    const matchesCategory = selectedCategory === 'Všetko' || product.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'Všetko' || product.category === selectedCategory
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
+      (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    return matchesCategory && matchesSearch
   })
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     if (sortBy === 'name-asc') return a.name.localeCompare(b.name)
-    return new Date(b.created_at) - new Date(a.created_at) // newest
+    return new Date(b.created_at) - new Date(a.created_at)
   })
 
   return (
-    <div className="pt-28 pb-16 px-8 max-w-[1440px] mx-auto min-h-screen">
+    <div className="pt-20 sm:pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto min-h-screen">
+      {/* Breadcrumbs */}
       <nav className="flex items-center gap-2 mb-8 text-[10px] md:text-sm font-label tracking-wide text-on-surface-variant">
         <Link className="hover:text-primary transition-colors" to="/">DOMOV</Link>
         <ChevronRight size={14} />
-        <span className="text-on-surface font-semibold uppercase">{selectedCategory}</span>
+        <span className="text-on-surface font-semibold uppercase">STAVEBNÉ MATERIÁLY</span>
       </nav>
 
-      <div className="flex flex-col lg:flex-row gap-8 md:gap-12">
+      {/* Hero Section */}
+      <section className="mb-12 sm:mb-16">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-12">
+          <div className="max-w-3xl">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl font-black tracking-tighter mb-4 sm:mb-6 uppercase break-words">Materiály</h1>
+            <p className="text-sm sm:text-lg text-on-surface-variant max-w-xl font-medium border-l-4 border-primary pl-4 sm:pl-6">
+              Kompletný sortiment stavebného materiálu pre hrubú stavbu, zateplenie, strechy aj suchú výstavbu.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-6 w-full md:w-auto">
+            <div className="relative group">
+              <input
+                type="text"
+                placeholder="Hľadať materiál..."
+                className="w-full md:w-80 bg-white py-5 pr-5 !pl-14 text-sm font-bold uppercase tracking-widest border-b-2 border-outline/10 focus:border-primary outline-none transition-all"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/40 group-hover:text-primary transition-colors pointer-events-none" size={20} />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="flex flex-col lg:flex-row gap-12">
         {/* Mobile Filter Toggle */}
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="lg:hidden flex items-center justify-center gap-2 bg-white border border-outline/10 p-4 font-black uppercase tracking-widest text-xs"
+          className="lg:hidden flex items-center justify-center gap-2 bg-white border border-outline/15 p-3.5 font-black uppercase tracking-widest text-xs rounded-lg active:bg-surface shadow-sm mb-4"
         >
-          <List size={18} /> {showFilters ? 'Zatvoriť filtre' : 'Filtre a Kategórie'}
+          <Filter size={18} /> {showFilters ? 'Zatvoriť filtre' : 'Filtre a Kategórie'}
         </button>
 
         {/* Sidebar Filters */}
-        <aside className={cn(
-          "w-full lg:w-64 flex-shrink-0 space-y-10 lg:block",
-          showFilters ? "block" : "hidden"
-        )}>
-          <section>
-            <div className="relative mb-8">
-              <input
-                type="text"
-                placeholder="Hľadať produkt..."
-                className="w-full bg-surface border-b-2 border-outline/20 py-3 pl-10 pr-4 focus:border-primary outline-none transition-all font-medium"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <Search className="absolute left-2 top-3.5 text-outline/50" size={18} />
-            </div>
-
-            <span className="block text-xs font-bold tracking-[0.05em] text-outline mb-4 uppercase">Kategórie</span>
-            <ul className="grid grid-cols-2 lg:grid-cols-1 gap-1">
-              {categories.map(cat => (
-                <li key={cat}>
+        <aside className={cn("w-full lg:w-64 shrink-0", showFilters ? "block" : "hidden lg:block")}>
+          <div className="sticky top-28">
+            <div className="mb-10">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-outline mb-6 flex items-center gap-2">
+                <Filter size={14} /> Kategórie
+              </h4>
+              <div className="flex flex-col gap-1">
+                {categories.map(cat => (
                   <button
+                    key={cat}
                     onClick={() => { setSelectedCategory(cat); setShowFilters(false); }}
                     className={cn(
-                      "w-full flex items-center justify-between p-3 transition-all text-left",
+                      "text-left px-4 py-3 text-xs font-bold uppercase tracking-widest transition-all",
                       selectedCategory === cat
-                        ? "bg-primary text-on-primary font-bold shadow-md"
-                        : "hover:bg-surface-container-low"
+                        ? "bg-primary text-on-primary shadow-md font-bold"
+                        : "hover:bg-surface text-on-surface-variant"
                     )}
                   >
-                    <span className="text-xs md:text-sm">{cat}</span>
-                    <ChevronRight size={18} className={cn("hidden lg:block", selectedCategory === cat ? "opacity-100" : "opacity-0")} />
+                    {cat}
                   </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="hidden lg:block bg-surface-container-low p-6 rounded-none border border-outline/5">
-            <h4 className="font-bold text-sm mb-4 flex items-center gap-2">
-              <Star className="text-primary-strong fill-primary-strong" size={16} />
-              Doprava zadarmo
-            </h4>
-            <p className="text-xs text-on-surface-variant leading-relaxed">
-              Pri objednávke nad 500 € v rámci okresu Liptovský Mikuláš dovezieme tovar zadarmo naším vozidlom.
-            </p>
-          </section>
-        </aside>
-
-        {/* Main Product Area */}
-        <div className="flex-1">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-b border-outline/10 pb-6">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 uppercase">{selectedCategory}</h1>
-              <p className="text-on-surface-variant text-xs md:text-sm font-medium">Nájdených {filteredProducts.length} produktov</p>
+                ))}
+              </div>
             </div>
 
-            <div className="flex items-center gap-4 w-full sm:w-auto">
-              <span className="text-[10px] font-black uppercase text-outline hidden sm:block">Zoradiť podľa:</span>
+            <div>
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-outline mb-6">Zoradiť</h4>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="flex-1 sm:flex-none bg-white border border-outline/10 p-3 text-xs font-bold uppercase tracking-widest focus:ring-1 focus:ring-primary outline-none"
+                className="w-full bg-white border border-outline/10 p-4 text-xs font-bold uppercase tracking-widest outline-none focus:border-primary"
               >
                 <option value="newest">Najnovšie</option>
                 <option value="name-asc">Názov (A-Z)</option>
               </select>
             </div>
           </div>
+        </aside>
 
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="animate-pulse bg-surface-container-low h-[450px]"></div>
-              ))}
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-24 bg-surface-container-low border border-dashed border-outline/30">
-              <Search className="mx-auto mb-4 text-outline/30" size={48} />
-              <p className="text-on-surface-variant text-lg font-bold mb-2">Nič sme nenašli</p>
-              <p className="text-on-surface-variant/60 text-sm mb-6">Skúste zmeniť kategóriu alebo hľadaný výraz.</p>
-              <button
-                onClick={() => { setSelectedCategory('Všetko'); setSearchQuery(''); }}
-                className="text-primary font-bold hover:underline"
-              >
-                Zobraziť všetky produkty
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {sortedProducts.map((product) => {
+        {/* Product Grid */}
+        <div className="flex-grow">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+            {loading ? (
+              [1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-[3/4] bg-white animate-pulse border border-outline/10"></div>)
+            ) : sortedProducts.length === 0 ? (
+              <div className="col-span-full py-20 text-center bg-white border border-dashed border-outline/20">
+                <p className="font-bold text-outline">Nenašli sme žiadny stavebný materiál.</p>
+              </div>
+            ) : (
+              sortedProducts.map((product) => {
                 return (
-                  <div
-                    key={product.id}
-                    className="group bg-white border border-outline/10 hover:border-primary/40 transition-all duration-300 flex flex-col cursor-pointer"
+                  <div 
+                    key={product.id} 
+                    className="group bg-white border border-outline/10 hover:border-primary/40 transition-all duration-300 flex flex-col cursor-pointer" 
                     onClick={() => { setSelectedProduct(product); setModalQty(1); }}
                   >
-                    {/* Image container */}
-                    <div className="relative aspect-square p-8 bg-[#fafafa] overflow-hidden flex items-center justify-center">
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
-                      <div 
-                        className="w-full h-full flex items-center justify-center text-outline/20"
-                        style={{ display: product.image_url ? 'none' : 'flex' }}
-                      >
-                        <Package size={48} strokeWidth={1} />
-                      </div>
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20">
+                    <div className="relative aspect-square p-8 bg-[#fafafa] overflow-hidden">
+                      <img
+                        src={product.image_url || getPlaceholderImage(product.category, 'material')}
+                        alt={product.name}
+                        className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <span className="bg-white text-on-surface px-4 py-2 font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5 shadow-lg">
                           <Eye size={12} /> Náhľad
                         </span>
                       </div>
-                      {product.stock_quantity <= 0 && (
-                        <div className="absolute top-4 left-4 bg-error text-white text-[8px] font-black uppercase px-2 py-1 z-10">Vypredané</div>
-                      )}
                     </div>
 
-                    {/* Info container */}
                     <div className="p-8 flex flex-col flex-grow">
                       <span className="text-[10px] font-black uppercase tracking-widest text-primary-strong mb-2">{product.category || 'Materiál'}</span>
                       <h3 className="text-lg font-bold mb-6 line-clamp-2 h-14 group-hover:text-primary transition-colors">{product.name}</h3>
@@ -220,9 +188,9 @@ const Catalog = () => {
                     </div>
                   </div>
                 )
-              })}
-            </div>
-          )}
+              })
+            )}
+          </div>
         </div>
       </div>
 
@@ -252,62 +220,45 @@ const Catalog = () => {
                   {selectedProduct.name}
                 </h2>
 
-                <div className="flex items-center gap-6 mb-10">
-                  <div className={cn(
-                    "px-3 py-1 text-[10px] font-black uppercase tracking-widest border-2",
-                    selectedProduct.stock_quantity > 0 ? "border-emerald-500 text-emerald-600" : "border-zinc-300 text-zinc-400"
-                  )}>
-                    {selectedProduct.stock_quantity > 0 ? `SKLADOM ${selectedProduct.stock_quantity} ${selectedProduct.unit ? selectedProduct.unit.toUpperCase() : 'KS'}` : "NA OBJEDNÁVKU"}
-                  </div>
-                </div>
-
-                <div className="prose prose-sm text-on-surface-variant leading-relaxed mb-12">
-                  <p className="text-lg italic mb-6">{selectedProduct.description}</p>
-                  <ul className="space-y-3 list-none p-0">
+                <div className="prose prose-sm text-on-surface-variant leading-relaxed mb-12 font-medium">
+                  {selectedProduct.description ? (
+                    <p className="text-lg italic mb-6">{selectedProduct.description}</p>
+                  ) : (
+                    <p className="text-sm italic mb-6 text-outline">Pre tento produkt nie je k dispozícii žiadny podrobný popis.</p>
+                  )}
+                  <ul className="space-y-2 list-none p-0 text-xs sm:text-sm">
                     <li className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
                       <strong>SKU:</strong> {selectedProduct.sku || 'N/A'}
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-                      <strong>EAN:</strong> {selectedProduct.ean || 'N/A'}
                     </li>
                   </ul>
                 </div>
               </div>
 
-              <div className="mt-12 space-y-6">
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center border-2 border-outline/10 bg-surface">
-                    <button
-                      onClick={() => setModalQty(Math.max(1, modalQty - 1))}
-                      className="p-4 hover:bg-primary/20 transition-colors"
-                    ><Minus size={20} /></button>
-                    <span className="min-w-[4rem] px-2 text-center font-black text-lg">{modalQty} {selectedProduct.unit || 'ks'}</span>
-                    <button
-                      onClick={() => setModalQty(modalQty + 1)}
-                      className="p-4 hover:bg-primary/20 transition-colors"
-                    ><Plus size={20} /></button>
-                  </div>
-                  <div className="text-[10px] font-bold uppercase text-outline tracking-wider leading-tight">
-                    Presné množstvo<br />pre váš projekt
-                  </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-6 border-t border-outline/10">
+                <div className="flex items-center border border-outline/20 bg-surface">
+                  <button
+                    onClick={() => setModalQty(Math.max(1, modalQty - 1))}
+                    className="p-3 hover:bg-surface-container transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center font-bold"
+                  ><Minus size={16} /></button>
+                  <span className="px-4 font-bold text-sm min-w-[3rem] text-center">{modalQty}</span>
+                  <button
+                    onClick={() => setModalQty(modalQty + 1)}
+                    className="p-3 hover:bg-surface-container transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center font-bold"
+                  ><Plus size={16} /></button>
                 </div>
 
                 <button
                   onClick={() => {
-                    addToCart(selectedProduct, modalQty);
+                    for (let i = 0; i < modalQty; i++) {
+                      addToCart(selectedProduct);
+                    }
                     setSelectedProduct(null);
-                    setModalQty(1);
                   }}
-                  className="w-full bg-[#2d2f2b] text-primary py-6 font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
+                  className="flex-1 bg-primary text-on-primary font-bold uppercase tracking-widest text-xs py-4 px-6 hover:bg-[#daf900] transition-colors flex items-center justify-center gap-2 shadow-lg min-h-[44px]"
                 >
-                  <ShoppingCart size={22} />
-                  PRIDAŤ DO DOPYTU
+                  <ShoppingCart size={18} /> Pridať do dopytu ({modalQty} {selectedProduct.unit || 'ks'})
                 </button>
-                <p className="text-[10px] text-center text-on-surface-variant font-bold uppercase tracking-widest pt-2">
-                  Záruka kvality STAVEBNINY ĽUBEĽA
-                </p>
               </div>
             </div>
           </div>

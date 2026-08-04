@@ -410,15 +410,15 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
   }
 
   return (
-    <div className="pt-28 pb-20 min-h-screen bg-[#fcfcf8]">
+    <div className="pt-20 sm:pt-28 pb-16 sm:pb-20 min-h-screen bg-[#fcfcf8]">
       {/* Header Info Section */}
-      <section className="bg-white border-b border-outline/5 py-16 px-8 mb-12">
+      <section className="bg-white border-b border-outline/5 py-8 sm:py-16 px-4 sm:px-6 md:px-8 mb-8 sm:mb-12">
         <div className="max-w-[1440px] mx-auto">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 sm:gap-12">
             <div className="max-w-3xl">
-              <span className="text-primary-strong font-black uppercase tracking-[0.3em] text-[10px] mb-4 block">Areál Stavebnín Ľubeľa</span>
-              <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 leading-none">POŽIČOVŇA NÁRADIA</h1>
-              <p className="text-lg text-on-surface-variant font-medium max-w-xl border-l-4 border-primary pl-6">
+              <span className="text-primary-strong font-black uppercase tracking-[0.3em] text-[10px] mb-3 block">Areál Stavebnín Ľubeľa</span>
+              <h1 className="text-3xl sm:text-5xl md:text-7xl font-black tracking-tighter mb-4 sm:mb-6 leading-tight break-words">POŽIČOVŇA NÁRADIA</h1>
+              <p className="text-sm sm:text-lg text-on-surface-variant font-medium max-w-xl border-l-4 border-primary pl-4 sm:pl-6">
                 Hutniaca technika, búracie kladivá, píly a odvlhčovače. Nájdite správne náradie pre svoj projekt a zarezervujte si ho online.
               </p>
             </div>
@@ -428,23 +428,23 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
                 <input
                   type="text"
                   placeholder="Hľadať náradie..."
-                  className="w-full lg:w-80 bg-surface p-5 pl-12 text-sm font-bold uppercase tracking-widest border-b-2 border-outline/10 focus:border-primary outline-none transition-all group-hover:bg-white"
+                  className="w-full lg:w-80 bg-surface py-4 sm:py-5 pr-4 sm:pr-5 !pl-14 text-xs sm:text-sm font-bold uppercase tracking-wider border-b-2 border-outline/10 focus:border-primary outline-none transition-all group-hover:bg-white rounded-md"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                 />
-                <Search className="absolute left-4 top-5 text-outline/40 group-hover:text-primary transition-colors" size={20} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-outline/40 group-hover:text-primary transition-colors pointer-events-none" size={20} />
               </div>
             </div>
           </div>
 
           {/* Categories Horizontal Filter */}
-          <div className="flex flex-wrap gap-2 mt-8 border-t border-outline/5 pt-6">
+          <div className="flex flex-wrap gap-2 mt-6 sm:mt-8 border-t border-outline/5 pt-4 sm:pt-6">
             {categories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
                 className={cn(
-                  "px-6 py-3 text-[10px] font-black uppercase tracking-widest transition-all",
+                  "px-3.5 sm:px-6 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-wider transition-all rounded-md",
                   selectedCategory === cat 
                     ? "bg-primary text-on-primary shadow-md" 
                     : "bg-surface text-on-surface hover:bg-white border border-outline/5"

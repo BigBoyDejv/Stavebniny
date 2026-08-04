@@ -2,8 +2,8 @@ import React from 'react';
 
 const GDPR = () => {
   return (
-    <div className="pt-32 pb-20 px-8 max-w-4xl mx-auto prose prose-zinc">
-      <h1 className="text-4xl font-black mb-8 tracking-tight">OCHRANA OSOBNÝCH ÚDAJOV (GDPR)</h1>
+    <div className="pt-20 sm:pt-28 pb-16 px-4 sm:px-6 max-w-4xl mx-auto prose prose-zinc">
+      <h1 className="text-2xl sm:text-4xl font-black mb-6 sm:mb-8 tracking-tight break-words">OCHRANA OSOBNÝCH ÚDAJOV (GDPR)</h1>
       
       <section className="mb-8">
         <h2 className="text-xl font-bold mb-4">1. Základné ustanovenia</h2>

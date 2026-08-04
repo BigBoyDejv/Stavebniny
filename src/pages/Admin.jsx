@@ -218,7 +218,7 @@ const Admin = () => {
     const uploadToastId = toast.loading('Komprimujem a nahrávam fotku...')
 
     try {
-      const file = await compressImage(rawFile, { maxWidth: 1200, maxHeight: 1200, quality: 0.75 })
+      const file = await compressImage(rawFile, { maxWidth: 1920, maxHeight: 1920, quality: 0.90 })
       let publicUrl = ''
       try {
         publicUrl = await api.uploadImage(file)
@@ -275,15 +275,53 @@ const Admin = () => {
     }
   }
 
+  const handleCategorySelect = (categoryName) => {
+    const paintCategories = ['Farby a laky', 'Farby', 'Laky', 'Riedidlá', 'Maliarske potreby']
+    const toolCategories = ['Ručné náradie', 'Elektrické náradie', 'Vrtačky', 'Pomocky', 'Ochranné pomôcky']
+    const agriCategories = ['Krmivá', 'Hnojivá', 'Substráty', 'Osivá a semená', 'Postreky', 'Hrable a náradie']
+    
+    let targetType = formData.type || 'material'
+    if (paintCategories.includes(categoryName) || categoryName === 'Farby a laky') targetType = 'paint'
+    else if (toolCategories.includes(categoryName)) targetType = 'tool'
+    else if (agriCategories.includes(categoryName)) targetType = 'agriculture'
+    else if (categories.find(c => c.name === categoryName)?.type) {
+      targetType = categories.find(c => c.name === categoryName).type
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      category: categoryName,
+      type: targetType
+    }))
+  }
+
   const handleSaveProduct = async (e) => {
     e.preventDefault()
     setLoading(true)
     try {
+      const paintCategories = ['Farby a laky', 'Farby', 'Laky', 'Riedidlá', 'Maliarske potreby']
+      const toolCategories = ['Ručné náradie', 'Elektrické náradie', 'Vrtačky', 'Pomocky', 'Ochranné pomôcky']
+      const agriCategories = ['Krmivá', 'Hnojivá', 'Substráty', 'Osivá a semená', 'Postreky', 'Hrable a náradie']
+      
+      let inferredType = formData.type || 'material'
+      if (paintCategories.includes(formData.category) || formData.category === 'Farby a laky') inferredType = 'paint'
+      else if (toolCategories.includes(formData.category)) inferredType = 'tool'
+      else if (agriCategories.includes(formData.category)) inferredType = 'agriculture'
+      else if (categories.find(c => c.name === formData.category)?.type) {
+        inferredType = categories.find(c => c.name === formData.category).type
+      }
+
+      const payload = {
+        ...formData,
+        type: inferredType,
+        stock_quantity: Number(formData.stock_quantity || 999)
+      }
+
       if (editingItem) {
-        await api.products.update({ ...formData, id: editingItem.id })
+        await api.products.update({ ...payload, id: editingItem.id })
         toast.success('Produkt bol úspešne upravený!')
       } else {
-        await api.products.create(formData)
+        await api.products.create(payload)
         toast.success('Produkt bol úspešne pridaný!')
       }
       setShowModal(false)
@@ -555,19 +593,34 @@ const Admin = () => {
   if (!session) return <LoginComponent />
 
   return (
-    <div className="flex flex-col md:flex-row pt-20 min-h-screen bg-[#f7f7f0]">
-      {/* Mobile Sidebar Toggle */}
-      <div className="md:hidden flex justify-between items-center p-4 bg-white border-b border-outline/10">
-        <span className="font-black tracking-tighter uppercase text-xs">Stavebniny PRO</span>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 bg-surface">
-          {isSidebarOpen ? <X size={20}/> : <Menu size={20}/>}
+    <div className="flex flex-col md:flex-row pt-16 sm:pt-20 min-h-screen bg-[#f7f7f0]">
+      {/* Mobile Sidebar Toggle Header */}
+      <div className="md:hidden flex justify-between items-center p-3.5 bg-white border-b border-outline/10 sticky top-[53px] z-30 shadow-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-black tracking-tighter uppercase text-xs">Stavebniny PRO</span>
+          <span className="text-[10px] bg-primary/30 px-2 py-0.5 font-bold uppercase rounded">{view}</span>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className="p-2 bg-surface text-[#2d2f2b] rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center border border-outline/10"
+          aria-label="Admin menu"
+        >
+          {isSidebarOpen ? <X size={22}/> : <Menu size={22}/>}
         </button>
       </div>
+
+      {/* Backdrop for mobile sidebar */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-30 md:hidden backdrop-blur-xs"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* Sidebar navigation */}
       <aside className={cn(
         "bg-white border-r border-outline/10 h-screen overflow-y-auto transition-all duration-300 z-40 shrink-0",
-        "fixed md:sticky top-0 left-0 pt-20 md:pt-0",
+        "fixed md:sticky top-0 left-0 pt-16 md:pt-0 shadow-xl md:shadow-none",
         isSidebarOpen ? "w-64 opacity-100 visible" : "w-0 opacity-0 invisible md:w-64 md:opacity-100 md:visible"
       )}>
         <div className="p-8 hidden md:block">
@@ -596,10 +649,10 @@ const Admin = () => {
       </aside>
 
       {/* Main Area */}
-      <main className="flex-1 p-4 md:p-12 overflow-x-hidden">
-        <header className="flex justify-between items-end mb-12">
+      <main className="flex-1 p-3.5 sm:p-6 md:p-12 overflow-x-hidden">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-12 border-b border-outline/10 pb-4 sm:pb-0 sm:border-none">
           <div>
-            <h1 className="text-4xl font-black tracking-tight capitalize">
+            <h1 className="text-2xl sm:text-4xl font-black tracking-tight capitalize">
               {view === 'products' ? 'Správa Inventára' : 
                view === 'orders' ? 'Dopyty z katalógu' : 
                view === 'rentals' ? 'Správa Požičovne' :
@@ -612,20 +665,20 @@ const Admin = () => {
             </h1>
           </div>
           {view === 'products' && (
-            <div className="flex gap-2">
+            <div className="flex flex-row flex-wrap sm:flex-nowrap gap-2.5 w-full sm:w-auto items-center">
               <button 
                 onClick={() => {
                   const url = prompt('Vložte URL produktu (napr. z OBI):')
                   if (url) handleImportFromUrl(url)
                 }}
-                className="bg-white border border-outline/20 text-on-surface px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-surface transition-colors"
+                className="flex-1 sm:flex-none justify-center bg-white border border-outline/20 text-on-surface px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-surface active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
                 disabled={loading}
               >
                 <PlusCircle size={16} /> {loading ? 'Spracúvam...' : 'Import z URL'}
               </button>
               <button 
                 onClick={() => { setEditingItem(null); setFormData({name:'', description:'', price:0, sku:'', stock_quantity:0, category:'', image_url:'', type: 'material', unit: 'ks'}); setShowModal(true); }}
-                className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
+                className="flex-1 sm:flex-none justify-center bg-primary text-on-primary px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
               >
                 <Plus size={16} /> Pridať produkt
               </button>
@@ -650,7 +703,7 @@ const Admin = () => {
                 });
                 setShowRentalModal(true);
               }}
-              className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
+              className="w-full sm:w-auto justify-center bg-primary text-on-primary px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
             >
               <Plus size={16} /> Pridať techniku
             </button>
@@ -672,7 +725,7 @@ const Admin = () => {
                 });
                 setShowBookingModal(true);
               }}
-              className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
+              className="w-full sm:w-auto justify-center bg-primary text-on-primary px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
             >
               <Plus size={16} /> Pridať rezerváciu
             </button>
@@ -680,7 +733,7 @@ const Admin = () => {
           {view === 'categories' && (
             <button 
               onClick={() => setShowCategoryModal(true)}
-              className="bg-primary text-on-primary px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] transition-colors"
+              className="w-full sm:w-auto justify-center bg-primary text-on-primary px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
             >
               <Plus size={16} /> Nová kategória
             </button>
@@ -1169,10 +1222,6 @@ const Admin = () => {
                           </div>
                           <div className="text-right shrink-0">
                             <span className="block font-black text-base text-on-surface">{Number(item.price || 0).toFixed(2)} € / {item.unit || 'ks'}</span>
-                            <span className={cn(
-                              "inline-block text-[9px] font-black px-2 py-0.5 uppercase mt-1",
-                              item.stock_quantity < 5 ? "bg-error/10 text-error" : "bg-emerald-100 text-emerald-700"
-                            )}>{item.stock_quantity} {item.unit || 'ks'}</span>
                           </div>
                         </div>
                         <div className="flex justify-between items-center bg-surface p-3 text-[10px] font-bold uppercase tracking-wider">
@@ -1327,6 +1376,7 @@ const Admin = () => {
                   >
                     <option value="material">Materiál (Stavba)</option>
                     <option value="tool">Náradie (Nástroje)</option>
+                    <option value="paint">Farby a laky</option>
                     <option value="agriculture">Poľnohospodársky produkt</option>
                   </select>
                 </div>
@@ -1336,18 +1386,38 @@ const Admin = () => {
                     <select 
                       className="flex-1 bg-surface p-4 border-none focus:ring-1 focus:ring-primary text-sm font-bold"
                       value={formData.category}
-                      onChange={e => setFormData({...formData, category: e.target.value})}
+                      onChange={e => handleCategorySelect(e.target.value)}
                       required
                     >
                       <option value="">Vyberte kategóriu</option>
-                      {categories.filter(c => c.type === formData.type).map(c => (
-                        <option key={c.id} value={c.name}>{c.name}</option>
-                      ))}
+                      <optgroup label="Materiál & Stavba">
+                        {categories.filter(c => !c.type || c.type === 'material').map(c => (
+                          <option key={c.id || c.name} value={c.name}>{c.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Náradie & Nástroje">
+                        {categories.filter(c => c.type === 'tool').map(c => (
+                          <option key={c.id || c.name} value={c.name}>{c.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Farby & Laky">
+                        {categories.filter(c => c.type === 'paint' || c.name === 'Farby a laky').map(c => (
+                          <option key={c.id || c.name} value={c.name}>{c.name}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Poľnohospodárstvo & Záhrada">
+                        {categories.filter(c => c.type === 'agriculture').map(c => (
+                          <option key={c.id || c.name} value={c.name}>{c.name}</option>
+                        ))}
+                      </optgroup>
                     </select>
                     <button 
                       type="button"
-                      onClick={() => setShowCategoryModal(true)}
-                      className="bg-surface px-4 text-primary hover:bg-primary hover:text-on-primary transition-colors"
+                      onClick={() => {
+                        setCategoryFormData({ name: '', type: formData.type || 'material' });
+                        setShowCategoryModal(true);
+                      }}
+                      className="bg-surface px-4 text-primary hover:bg-primary hover:text-on-primary transition-colors rounded-md"
                       title="Pridať novú kategóriu"
                     ><Plus size={18}/></button>
                   </div>
