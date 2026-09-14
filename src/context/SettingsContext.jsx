@@ -11,7 +11,7 @@ const defaultSettings = {
   hours_alert_enabled: 'false',
   hours_alert_message: '',
   hours_alert_type: 'info',
-  contact_phone: '+421 903 434 495',
+  contact_phone: '0903 434 495',
   contact_address: 'Ľubeľa 419, 032 14 Ľubeľa',
   contact_email: 'kubik@stavivalubela.sk',
   billing_name: 'STAVIVÁLUBELA S.R.O.',

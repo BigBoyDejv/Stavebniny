@@ -161,7 +161,7 @@ CREATE TABLE site_settings (
 );
 
 INSERT INTO site_settings (key, value) VALUES
-('contact_phone', '+421 905 123 456'),
+('contact_phone', '0903 434 495'),
 ('contact_email', 'kubik@stavivalubela.sk'),
 ('opening_hours_mon_fri', '07:00 - 16:30'),
 ('opening_hours_sat', '07:00 - 12:00'),

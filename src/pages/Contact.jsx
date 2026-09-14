@@ -198,7 +198,7 @@ const Contact = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <a
-                href={`https://wa.me/${settings.contact_phone.replace(/\s+/g, '')}`}
+                href={`https://wa.me/${(settings.contact_phone || '').replace(/\D/g, '').replace(/^0/, '421')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex flex-col p-10 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors group"

@@ -36,7 +36,7 @@ insert into site_settings (key, value) values
 ('hours_sunday', 'ZATVORENÉ') on conflict (key) do nothing;
 
 insert into site_settings (key, value) values
-('contact_phone', '+421 903 434 495') on conflict (key) do nothing;
+('contact_phone', '0903 434 495') on conflict (key) do nothing;
 
 insert into site_settings (key, value) values
 ('contact_address', 'Ľubeľa 419, 032 14 Ľubeľa') on conflict (key) do nothing;
