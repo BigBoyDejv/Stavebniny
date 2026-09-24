@@ -5,7 +5,7 @@ import {
   HelpCircle, ChevronRight, CheckCircle2, AlertTriangle, Plus, Minus,
   Clock, Truck
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { cn, getPlaceholderImage } from '../lib/utils'
 import { toast } from 'react-hot-toast'
 import { RENTAL_ITEMS, RENTAL_CATEGORIES, GENERAL_RENTAL_TERMS } from '../lib/rentalData'
@@ -20,6 +20,7 @@ const Rental = () => {
   const [categories, setCategories] = useState(RENTAL_CATEGORIES)
   const [selectedCategory, setSelectedCategory] = useState('Všetko')
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('newest')
   const [bookings, setBookings] = useState([])
 
   // Parse shipping config from settings if available
@@ -156,7 +157,7 @@ const Rental = () => {
   const [selectedAccIds, setSelectedAccIds] = useState([]) // list of accessory ids selected
   
   const [inquiryData, setInquiryData] = useState({
-    name: '', email: '', phone: '', message: ''
+    name: '', email: '', phone: '', message: '', _honeypot: ''
   })
   const [sending, setSending] = useState(false)
 
@@ -169,13 +170,8 @@ const Rental = () => {
   const fetchRentals = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('rental_items')
-        .select('*')
-        .order('name', { ascending: true })
-
-      if (error) throw error
-      if (data && data.length > 0) {
+      const data = await api.rental.getItems()
+      if (Array.isArray(data) && data.length > 0) {
         setItems(data)
       } else {
         setItems(RENTAL_ITEMS)
@@ -190,12 +186,12 @@ const Rental = () => {
 
   const fetchBookings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('rental_bookings')
-        .select('*')
-        .eq('status', 'approved')
-      if (error) throw error
-      setBookings(data || [])
+      const data = await api.rental.getBookings()
+      if (Array.isArray(data)) {
+        setBookings(data.filter(b => b.status === 'approved'))
+      } else {
+        setBookings([])
+      }
     } catch (err) {
       console.error('Error fetching approved bookings:', err.message)
     }
@@ -314,7 +310,7 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
     try {
       // 1. Insert into rental bookings via API
       await api.rental.createBooking({
-        rental_item_id: selectedItem.id,
+        rental_item_id: selectedForBooking.id,
         customer_name: inquiryData.name,
         customer_email: inquiryData.email,
         customer_phone: inquiryData.phone,
@@ -328,8 +324,9 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
         delivery_zip: deliveryMethod === 'delivery' ? deliveryZip : null,
         delivery_municipality: deliveryMethod === 'delivery' ? (deliveryMunicipality === 'other' ? 'Iná obec' : deliveryMunicipality) : null,
         delivery_price: deliveryMethod === 'delivery' ? costDetails.deliveryCost : 0,
-        notes: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
-        status: 'pending'
+        note: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
+        status: 'pending',
+        _honeypot: inquiryData._honeypot
       })
 
       // 2. Insert inquiry copy via API
@@ -338,24 +335,15 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
           name: inquiryData.name,
           email: inquiryData.email,
           message: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : ''),
+          silent: true,
+          _honeypot: inquiryData._honeypot
         })
       } catch (inqErr) {}
 
-      // 3. Send email notification (if flag enabled)
-      const emailTo = settings.contact_email || 'kubik@stavivalubela.sk';
-      await sendEmailNotification({
-        type: 'Rezervácia',
-        emailTo: emailTo,
-        customerName: inquiryData.name,
-        customerEmail: inquiryData.email,
-        customerPhone: inquiryData.phone,
-        subject: `Nová rezervácia techniky: ${selectedForBooking.name}`,
-        details: detailSummary + (inquiryData.message ? `\n\nPOZNÁMKA ZÁKAZNÍKA: ${inquiryData.message}` : '')
-      });
 
       toast.success('Rezervačná požiadavka bola úspešne odoslaná! Budeme vás kontaktovať.')
       setSelectedForBooking(null)
-      setInquiryData({ name: '', email: '', phone: '', message: '' })
+      setInquiryData({ name: '', email: '', phone: '', message: '', _honeypot: '' })
       setSelectedAccIds([])
       setStartDate('')
       setEndDate('')
@@ -378,6 +366,12 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.description.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesCategory && matchesSearch
+  })
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    if (sortBy === 'price-asc') return (a.price24h || 0) - (b.price24h || 0)
+    if (sortBy === 'price-desc') return (b.price24h || 0) - (a.price24h || 0)
+    return 0
   })
 
   // Autofill start and end date helper when choosing duration preset
@@ -438,21 +432,33 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
           </div>
 
           {/* Categories Horizontal Filter */}
-          <div className="flex flex-wrap gap-2 mt-6 sm:mt-8 border-t border-outline/5 pt-4 sm:pt-6">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={cn(
-                  "px-3.5 sm:px-6 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-wider transition-all rounded-md",
-                  selectedCategory === cat 
-                    ? "bg-primary text-on-primary shadow-md" 
-                    : "bg-surface text-on-surface hover:bg-white border border-outline/5"
-                )}
-              >
-                {cat}
-              </button>
-            ))}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 sm:mt-8 border-t border-outline/5 pt-4 sm:pt-6">
+            <div className="flex flex-wrap gap-2">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={cn(
+                    "px-3.5 sm:px-6 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-wider transition-all rounded-md",
+                    selectedCategory === cat 
+                      ? "bg-primary text-on-primary shadow-md" 
+                      : "bg-surface text-on-surface hover:bg-white border border-outline/5"
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+            
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-white border border-outline/10 p-3 text-xs font-bold uppercase tracking-widest outline-none focus:border-primary rounded-md min-w-[200px]"
+            >
+              <option value="newest">Najnovšie</option>
+              <option value="price-asc">Od najlacnejšieho (24h)</option>
+              <option value="price-desc">Od najdrahšieho (24h)</option>
+            </select>
           </div>
         </div>
       </section>
@@ -462,13 +468,13 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {loading ? (
             [1, 2, 3, 4].map(i => <div key={i} className="aspect-[4/5] bg-white border border-outline/5 animate-pulse"></div>)
-          ) : filteredItems.length === 0 ? (
+          ) : sortedItems.length === 0 ? (
             <div className="col-span-full py-32 text-center bg-white border border-dashed border-outline/20">
               <Info size={48} className="mx-auto mb-4 text-outline/30" />
               <p className="font-black uppercase tracking-widest text-outline">Nenašli sme žiadne zodpovedajúce náradie</p>
             </div>
           ) : (
-            filteredItems.map(item => {
+            sortedItems.map(item => {
               const reserved = isItemReservedToday(item.id)
               return (
                 <div 
@@ -1003,6 +1009,8 @@ ${deliveryMethod === 'delivery' ? `CENA ZA DOVOZ: ${costDetails.deliveryCost.toF
                         </span>
                       </div>
                     </div>
+
+                    <input type="text" name="_honeypot" className="hidden" style={{ display: 'none' }} value={inquiryData._honeypot} onChange={e => setInquiryData({ ...inquiryData, _honeypot: e.target.value })} tabIndex="-1" autoComplete="off" />
 
                     <button
                       type="submit"

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { api } from '../lib/api'
-import { supabase } from '../lib/supabase'
 
 const SettingsContext = createContext()
 

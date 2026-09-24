@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// FEATURE FLAG: Zapnuté pre produkčné nasadenie
-export const ENABLE_EMAIL_NOTIFICATIONS = true;
+// FEATURE FLAG: Vypnuté - e-maily sa odosielajú okamžite cez natívny ExoHosting backend (public/api/mailer.php)
+export const ENABLE_EMAIL_NOTIFICATIONS = false;
 
 /**
  * Odosiela e-mailovú notifikáciu cez bezplatnú službu FormSubmit.co.

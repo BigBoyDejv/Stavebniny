@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Mail, Phone, MapPin, Clock, MessageSquare, Send, CheckCircle, Smartphone, User, HelpCircle, ArrowRight, ShieldCheck, Headphones } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { cn } from '../lib/utils'
 import { toast } from 'react-hot-toast'
 import { useSettings } from '../context/SettingsContext'
@@ -9,7 +9,7 @@ import { sendEmailNotification } from '../lib/email'
 
 const Contact = () => {
   const { settings } = useSettings()
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: 'Všeobecný dopyt', message: '' })
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', subject: 'Všeobecný dopyt', message: '', _honeypot: '' })
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -20,31 +20,22 @@ const Contact = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    
+    const inquiryPayload = {
+      type: 'Konzultácia / Dopyt',
+      customer_name: formData.name,
+      customer_email: formData.email,
+      customer_phone: formData.phone,
+      subject: formData.subject,
+      details: formData.message,
+      _honeypot: formData._honeypot
+    }
+
     try {
-      const { error } = await supabase
-        .from('inquiries')
-        .insert([{
-          name: formData.name,
-          email: formData.email,
-          message: `PREDMET: ${formData.subject}\nINFO: ${formData.message}\nTELEFÓN: ${formData.phone || 'N/A'}`
-        }])
-
-      if (error) throw error
-
-      // Odoslanie e-mailovej notifikácie (ak je povolená)
-      const emailTo = settings.contact_email || 'kubik@stavivalubela.sk';
-      await sendEmailNotification({
-        type: 'Kontakt',
-        emailTo: emailTo,
-        customerName: formData.name,
-        customerEmail: formData.email,
-        customerPhone: formData.phone,
-        subject: formData.subject,
-        details: formData.message
-      });
-
+      await api.inquiries.create(inquiryPayload)
       setSent(true)
-      setFormData({ name: '', email: '', phone: '', subject: 'Všeobecný dopyt', message: '' })
+      setFormData({ name: '', email: '', phone: '', subject: 'Všeobecný dopyt', message: '', _honeypot: '' })
+      toast.success('Konzultačný dopyt bol úspešne odoslaný!')
     } catch (error) {
       toast.error('Chyba pri odosielaní: ' + error.message)
     } finally {
@@ -177,6 +168,7 @@ const Contact = () => {
                   </div>
 
                   <div className="pt-10">
+                    <input type="text" name="_honeypot" className="hidden" style={{ display: 'none' }} value={formData._honeypot} onChange={e => setFormData({ ...formData, _honeypot: e.target.value })} tabIndex="-1" autoComplete="off" />
                     <button
                       type="submit"
                       disabled={loading}

@@ -1,10 +1,15 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Phone, Mail, MapPin, Clock } from 'lucide-react'
 import { useSettings } from '../context/SettingsContext'
 
 const Footer = () => {
+  const location = useLocation()
   const { settings } = useSettings()
+
+  if (location.pathname === '/admin') {
+    return null
+  }
 
   return (
     <footer className="bg-[#1a1b1a] w-full pt-16 pb-8 text-[#adaea7] border-t border-white/5">

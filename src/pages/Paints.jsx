@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight, Search, Filter, ShoppingBag, ShoppingCart, X, Plus, Minus, Eye } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 import { useCart } from '../context/CartContext'
 import { cn, getPlaceholderImage } from '../lib/utils'
@@ -14,6 +13,8 @@ const Paints = () => {
   const [sortBy, setSortBy] = useState('newest')
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [modalQty, setModalQty] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 24
 
   useEffect(() => {
     document.title = "Farby a laky | Stavebniny Ľubeľa"
@@ -38,9 +39,16 @@ const Paints = () => {
     return matchesSearch
   })
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, sortBy])
+
   const sortedProducts = [...filteredProducts].sort((a, b) => {
     return new Date(b.created_at) - new Date(a.created_at)
   })
+
+  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage)
+  const currentProducts = sortedProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   return (
     <div className="pt-20 sm:pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto min-h-screen">
@@ -96,12 +104,12 @@ const Paints = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
             {loading ? (
               [1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-[3/4] bg-white animate-pulse border border-outline/10"></div>)
-            ) : sortedProducts.length === 0 ? (
+            ) : currentProducts.length === 0 ? (
               <div className="col-span-full py-20 text-center bg-white border border-dashed border-outline/20">
                 <p className="font-bold text-outline">Nenašli sme žiadne produkty.</p>
               </div>
             ) : (
-               sortedProducts.map((product) => {
+               currentProducts.map((product) => {
                 return (
                   <div key={product.id} className="group bg-white border border-outline/10 hover:border-primary/40 transition-all duration-300 flex flex-col cursor-pointer" onClick={() => { setSelectedProduct(product); setModalQty(1); }}>
                     <div className="relative aspect-square p-8 bg-[#fafafa] overflow-hidden">
@@ -135,6 +143,28 @@ const Paints = () => {
               })
             )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-12 flex justify-center items-center gap-4">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 border border-outline/10 bg-white font-bold text-xs uppercase hover:bg-surface disabled:opacity-50 transition-colors"
+              >
+                Predchádz.
+              </button>
+              <span className="text-xs font-black uppercase text-on-surface-variant">
+                Strana {currentPage} z {totalPages}
+              </span>
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 border border-outline/10 bg-white font-bold text-xs uppercase hover:bg-surface disabled:opacity-50 transition-colors"
+              >
+                Nasledujúca
+              </button>
+            </div>
+          )}
         </div>
       </div>
       

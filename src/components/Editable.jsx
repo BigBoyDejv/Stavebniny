@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { Edit2, Check, X, Loader2, Upload } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
-import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 import { toast } from 'react-hot-toast'
 import { compressImage } from '../lib/utils'
@@ -73,19 +72,7 @@ export const Editable = ({
       try {
         publicUrl = await api.uploadImage(file)
       } catch (uploadErr) {
-        console.warn('api.uploadImage failed, using direct Supabase storage fallback:', uploadErr)
-        const ext = file.name.split('.').pop() || 'webp'
-        const fileName = `settings_${settingKey}_${Math.random().toString(36).substring(2, 10)}.${ext}`
-        const { error } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, file, { cacheControl: '3600', upsert: true })
-
-        if (error) throw error
-
-        const { data: { publicUrl: url } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(fileName)
-        publicUrl = url
+        throw new Error(uploadErr.message || 'Nepodarilo sa nahrať obrázok na server')
       }
 
       setEditValue(publicUrl)

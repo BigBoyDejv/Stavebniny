@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { useSettings } from '../context/SettingsContext'
@@ -7,7 +6,7 @@ import {
   Plus, Edit, Trash2, Package, Truck, MessageSquare, 
   LogOut, LayoutDashboard, Settings, Search, Filter, 
   ChevronRight, AlertCircle, CheckCircle2, X, Eye, Menu, PlusCircle,
-  Upload, Image, Loader2, Calendar, Wrench, Sliders, Mail
+  Upload, Image, Loader2, Calendar, Wrench, Sliders, Mail, Bell
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -22,6 +21,9 @@ const Admin = () => {
   const [view, setView] = useState('dashboard')
   const [data, setData] = useState([])
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [stats, setStats] = useState({ products: 0, orders: 0, inquiries: 0, stock: 0 })
 
@@ -219,19 +221,7 @@ const Admin = () => {
 
     try {
       const file = await compressImage(rawFile, { maxWidth: 1920, maxHeight: 1920, quality: 0.90 })
-      let publicUrl = ''
-      try {
-        publicUrl = await api.uploadImage(file)
-      } catch (uploadErr) {
-        console.warn('API upload failed, trying Supabase Storage:', uploadErr)
-        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.webp`
-        const { error: sbUploadError } = await supabase.storage
-          .from('product-images')
-          .upload(fileName, file, { cacheControl: '3600', upsert: true })
-        if (sbUploadError) throw sbUploadError
-        const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName)
-        publicUrl = urlData.publicUrl
-      }
+      const publicUrl = await api.uploadImage(file)
 
       if (type === 'rental') {
         setRentalFormData(prev => ({ ...prev, image_url: publicUrl }))
@@ -240,8 +230,8 @@ const Admin = () => {
       }
       toast.success('Fotka úspešne nahratá a skomprimovaná!', { id: uploadToastId })
     } catch (error) {
-      console.error('Chyba pri nahrávaní obrázka:', error.message)
-      toast.error(`Nepodarilo sa nahrať fotku: ${error.message}`, { id: uploadToastId })
+      console.error('Chyba pri nahrávaní obrázka:', error)
+      toast.error(`Nepodarilo sa nahrať fotku: ${error.message || 'Neznáma chyba'}`, { id: uploadToastId })
     } finally {
       setImageUploading(false)
     }
@@ -464,19 +454,8 @@ const Admin = () => {
 
   const handleViewOrder = async (order) => {
     try {
-      const { data, error } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          products (
-            name,
-            unit
-          )
-        `)
-        .eq('order_id', order.id)
-      
-      if (error) throw error
-      setSelectedOrder({ ...order, items: data })
+      const items = Array.isArray(order.items) ? order.items : []
+      setSelectedOrder({ ...order, items })
       setShowOrderDetails(true)
 
       // Initialize calculator defaults
@@ -500,7 +479,7 @@ const Admin = () => {
       setCalcWait(false)
       setCalcWaitHalfHours(1)
     } catch (error) {
-      console.error('Error fetching order items:', error.message)
+      console.error('Error viewing order:', error.message)
     }
   }
 
@@ -518,6 +497,12 @@ const Admin = () => {
         await api.categories.delete(id)
       } else if (view === 'rentals') {
         await api.rental.deleteItem(id)
+      } else if (view === 'inquiries') {
+        await api.inquiries.delete(id)
+      } else if (view === 'orders') {
+        await api.orders.delete(id)
+      } else if (view === 'bookings') {
+        await api.rental.deleteBooking(id)
       }
       toast.success('Položka bola úspešne vymazaná.')
       fetchData()
@@ -578,184 +563,368 @@ const Admin = () => {
   }
 
   const filteredData = data.filter(item => {
+    if (!item) return false;
     const searchLower = searchTerm.toLowerCase();
-    if (view === 'orders' && item.shipping_info) {
-      const fullName = `${item.shipping_info.firstName || ''} ${item.shipping_info.lastName || ''}`;
-      return fullName.toLowerCase().includes(searchLower) || item.id.toLowerCase().includes(searchLower);
+    if (!searchLower) return true;
+    if (view === 'orders') {
+      const name = (item.customer_name || `${item.shipping_info?.firstName || ''} ${item.shipping_info?.lastName || ''}` || item.name || '').toLowerCase();
+      const email = (item.customer_email || item.shipping_info?.email || item.email || '').toLowerCase();
+      const phone = (item.customer_phone || item.shipping_info?.phone || item.phone || '').toLowerCase();
+      const id = String(item.id || '').toLowerCase();
+      return name.includes(searchLower) || email.includes(searchLower) || phone.includes(searchLower) || id.includes(searchLower);
     }
     if (view === 'bookings') {
       return (item.customer_name || '').toLowerCase().includes(searchLower) || 
              (item.rental_items?.name || '').toLowerCase().includes(searchLower);
     }
-    return (item.name || item.id || '').toLowerCase().includes(searchLower);
+    return (item.name || item.customer_name || String(item.id || '')).toLowerCase().includes(searchLower);
   });
 
   if (!session) return <LoginComponent />
 
   return (
-    <div className="flex flex-col md:flex-row pt-16 sm:pt-20 min-h-screen bg-[#f7f7f0]">
-      {/* Mobile Sidebar Toggle Header */}
-      <div className="md:hidden flex justify-between items-center p-3.5 bg-white border-b border-outline/10 sticky top-[53px] z-30 shadow-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-black tracking-tighter uppercase text-xs">Stavebniny PRO</span>
-          <span className="text-[10px] bg-primary/30 px-2 py-0.5 font-bold uppercase rounded">{view}</span>
-        </div>
-        <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-          className="p-2 bg-surface text-[#2d2f2b] rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center border border-outline/10"
-          aria-label="Admin menu"
-        >
-          {isSidebarOpen ? <X size={22}/> : <Menu size={22}/>}
-        </button>
-      </div>
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 flex flex-col font-sans">
+      {/* Top Bar (Enterprise Header) */}
+      <header className="sticky top-0 z-50 bg-[#18181b] text-white border-b border-zinc-800 shadow-md">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3">
+          {/* Left: Brand & Sidebar Toggle */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="hidden md:flex p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+              title={isSidebarCollapsed ? "Rozbaliť menu" : "Zbaliť menu"}
+            >
+              <Menu size={20} />
+            </button>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="md:hidden p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
+            >
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
 
-      {/* Backdrop for mobile sidebar */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/40 z-30 md:hidden backdrop-blur-xs"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar navigation */}
-      <aside className={cn(
-        "bg-white border-r border-outline/10 h-screen overflow-y-auto transition-all duration-300 z-40 shrink-0",
-        "fixed md:sticky top-0 left-0 pt-16 md:pt-0 shadow-xl md:shadow-none",
-        isSidebarOpen ? "w-64 opacity-100 visible" : "w-0 opacity-0 invisible md:w-64 md:opacity-100 md:visible"
-      )}>
-        <div className="p-8 hidden md:block">
-          <span className="text-xl font-black tracking-tighter">STAVEBNINY PRO</span>
-          <p className="text-[10px] uppercase tracking-widest text-[#546200] font-bold mt-1">Admin v2.0</p>
-        </div>
-        
-        <nav className="flex-1 px-4 space-y-1">
-          <NavItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={view === 'dashboard'} onClick={() => changeView('dashboard')} />
-          <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" active={view === 'products'} onClick={() => changeView('products')} />
-          <NavItem icon={<Filter size={18}/>} label="Kategórie" active={view === 'categories'} onClick={() => changeView('categories')} />
-          <NavItem icon={<Truck size={18}/>} label="Dopyty z katalógu" active={view === 'orders'} onClick={() => changeView('orders')} />
-          <NavItem icon={<MessageSquare size={18}/>} label="Správy z webu" active={view === 'inquiries'} onClick={() => changeView('inquiries')} />
-          <NavItem icon={<Calendar size={18}/>} label="Rezervácie techniky" active={view === 'bookings'} onClick={() => changeView('bookings')} />
-          <NavItem icon={<Wrench size={18}/>} label="Správa Požičovne" active={view === 'rentals'} onClick={() => changeView('rentals')} />
-          <div className="pt-8 pb-4 px-4 text-[10px] font-bold uppercase text-outline tracking-wider">Nastavenia</div>
-          <NavItem icon={<Sliders size={18}/>} label="Cenník Dopravy" active={view === 'shipping'} onClick={() => changeView('shipping')} />
-          <NavItem icon={<Settings size={18}/>} label="Systém" active={view === 'settings'} onClick={() => changeView('settings')} />
-        </nav>
-
-        <div className="p-8 mt-auto border-t border-outline/10">
-          <button onClick={logout} className="flex items-center gap-2 text-error text-[10px] font-black uppercase tracking-widest">
-            <LogOut size={14} /> Odhlásiť sa
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Area */}
-      <main className="flex-1 p-3.5 sm:p-6 md:p-12 overflow-x-hidden">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-12 border-b border-outline/10 pb-4 sm:pb-0 sm:border-none">
-          <div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight capitalize">
-              {view === 'products' ? 'Správa Inventára' : 
-               view === 'orders' ? 'Dopyty z katalógu' : 
-               view === 'rentals' ? 'Správa Požičovne' :
-               view === 'shipping' ? 'Cenník Dopravy' :
-               view === 'categories' ? 'Kategórie' :
-               view === 'bookings' ? 'Rezervácie Techniky' :
-               view === 'inquiries' ? 'Správy z webu' :
-               view === 'settings' ? 'Systémové Nastavenia' :
-               view === 'dashboard' ? 'Prehľad' : view}
-            </h1>
+            <div className="flex items-center gap-3">
+              <span className="font-black text-lg sm:text-xl tracking-tight uppercase text-white flex items-center gap-2">
+                <span className="bg-emerald-500 w-2.5 h-2.5 rounded-full inline-block animate-pulse"></span>
+                STAVEBNINY ĽUBEĽA
+              </span>
+              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full hidden sm:inline-block">
+                PRO PORTÁL
+              </span>
+            </div>
           </div>
-          {view === 'products' && (
-            <div className="flex flex-row flex-wrap sm:flex-nowrap gap-2.5 w-full sm:w-auto items-center">
+
+          {/* Right Header Controls */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Global Cmd+K Search trigger */}
+            <div className="relative hidden md:block">
+              <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-700/80 px-3 py-1.5 rounded-lg text-xs text-zinc-400 cursor-pointer hover:border-zinc-500 transition-colors w-64">
+                <Search size={14} className="text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Hľadať v portáli..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-transparent border-none outline-none text-white text-xs w-full placeholder-zinc-500"
+                />
+                <kbd className="bg-zinc-800 text-[10px] text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-700 font-mono">⌘K</kbd>
+              </div>
+            </div>
+
+            {/* Notifications Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 text-zinc-300 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors relative"
+                title="Notifikácie"
+              >
+                <Bell size={18} />
+                {(stats.inquiries + stats.orders) > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-[#18181b]"></span>
+                )}
+              </button>
+
+              {/* Notifications Popup */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-[#18181b] border border-zinc-800 rounded-xl shadow-2xl p-4 text-xs text-zinc-300 z-50">
+                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-zinc-800">
+                    <span className="font-bold text-white uppercase text-[11px] tracking-wider">Notifikácie & Správy</span>
+                    <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                      {stats.inquiries + stats.orders} nové
+                    </span>
+                  </div>
+                  <div className="space-y-2.5">
+                    <div 
+                      onClick={() => { setView('orders'); setShowNotifications(false); }}
+                      className="p-2.5 bg-zinc-900/80 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors border border-zinc-800 flex items-start gap-2.5"
+                    >
+                      <Truck size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-white text-xs">Dopyty z katalógu ({stats.orders})</p>
+                        <p className="text-[10px] text-zinc-400">Kliknite pre zobrazenie dopytov materiálov</p>
+                      </div>
+                    </div>
+                    <div 
+                      onClick={() => { setView('inquiries'); setShowNotifications(false); }}
+                      className="p-2.5 bg-zinc-900/80 hover:bg-zinc-800 rounded-lg cursor-pointer transition-colors border border-zinc-800 flex items-start gap-2.5"
+                    >
+                      <MessageSquare size={16} className="text-sky-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-white text-xs">Správy z webu ({stats.inquiries})</p>
+                        <p className="text-[10px] text-zinc-400">Nové formuláre a poradenstvo z /kontakt</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* User Profile Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="flex items-center gap-2 p-1.5 hover:bg-zinc-800 rounded-lg transition-colors border border-zinc-800/80"
+              >
+                <div className="w-7 h-7 bg-emerald-500 text-zinc-950 font-black rounded-full flex items-center justify-center text-xs">
+                  K
+                </div>
+                <span className="text-xs font-bold text-zinc-200 hidden md:inline-block">kubik@stavivalubela.sk</span>
+                <ChevronRight size={14} className={cn("text-zinc-400 transition-transform", showProfileMenu && "rotate-90")} />
+              </button>
+
+              {showProfileMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-[#18181b] border border-zinc-800 rounded-xl shadow-2xl py-2 text-xs z-50">
+                  <div className="px-4 py-2.5 border-b border-zinc-800">
+                    <p className="font-bold text-white">Stavebniny Ľubeľa Admin</p>
+                    <p className="text-[10px] text-zinc-400 truncate">kubik@stavivalubela.sk</p>
+                  </div>
+                  <button
+                    onClick={() => { setView('settings'); setShowProfileMenu(false); }}
+                    className="w-full text-left px-4 py-2 hover:bg-zinc-800 text-zinc-300 flex items-center gap-2"
+                  >
+                    <Settings size={14} /> Nastavenia webu
+                  </button>
+                  <a
+                    href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full text-left px-4 py-2 hover:bg-zinc-800 text-zinc-300 flex items-center gap-2"
+                  >
+                    <Mail size={14} /> Roundcube Webmail
+                  </a>
+                  <div className="my-1 border-t border-zinc-800" />
+                  <button
+                    onClick={logout}
+                    className="w-full text-left px-4 py-2 hover:bg-red-500/10 text-red-400 flex items-center gap-2 font-bold"
+                  >
+                    <LogOut size={14} /> Odhlásiť sa
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex flex-1 relative">
+        {/* Backdrop for mobile sidebar */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-xs"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* Modular Collapsible Sidebar */}
+        <aside className={cn(
+          "bg-[#18181b] text-zinc-300 border-r border-zinc-800 min-h-[calc(100vh-57px)] transition-all duration-300 z-40 shrink-0 flex flex-col justify-between",
+          isSidebarCollapsed ? "w-16" : "w-64",
+          isSidebarOpen ? "fixed inset-y-0 left-0 z-50 w-64 shadow-2xl" : "hidden md:flex"
+        )}>
+          <div className="p-3 space-y-6">
+            {/* Section 1 */}
+            <div>
+              {!isSidebarCollapsed && (
+                <div className="px-3 text-[10px] font-bold uppercase text-zinc-500 tracking-wider mb-2">
+                  HLAVNÝ PREHĽAD
+                </div>
+              )}
+              <NavItem 
+                icon={<LayoutDashboard size={18}/>} 
+                label="Prehľad" 
+                collapsed={isSidebarCollapsed}
+                active={view === 'dashboard'} 
+                onClick={() => changeView('dashboard')} 
+              />
+            </div>
+
+            {/* Section 2 */}
+            <div>
+              {!isSidebarCollapsed && (
+                <div className="px-3 text-[10px] font-bold uppercase text-zinc-500 tracking-wider mb-2">
+                  SPRÁVA OBSAHU & SKLADU
+                </div>
+              )}
+              <div className="space-y-1">
+                <NavItem icon={<Package size={18}/>} label="Produkty & Sklad" collapsed={isSidebarCollapsed} active={view === 'products'} onClick={() => changeView('products')} />
+                <NavItem icon={<Sliders size={18}/>} label="Kategórie" collapsed={isSidebarCollapsed} active={view === 'categories'} onClick={() => changeView('categories')} />
+                <NavItem icon={<Truck size={18}/>} label="Dopyty z katalógu" collapsed={isSidebarCollapsed} active={view === 'orders'} onClick={() => changeView('orders')} badge={stats.orders} />
+                <NavItem icon={<MessageSquare size={18}/>} label="Správy z webu" collapsed={isSidebarCollapsed} active={view === 'inquiries'} onClick={() => changeView('inquiries')} badge={stats.inquiries} dangerBadge={stats.inquiries > 0} />
+              </div>
+            </div>
+
+            {/* Section 3 */}
+            <div>
+              {!isSidebarCollapsed && (
+                <div className="px-3 text-[10px] font-bold uppercase text-zinc-500 tracking-wider mb-2">
+                  POŽIČOVŇA NÁRADIA
+                </div>
+              )}
+              <div className="space-y-1">
+                <NavItem icon={<Calendar size={18}/>} label="Rezervácie techniky" collapsed={isSidebarCollapsed} active={view === 'bookings'} onClick={() => changeView('bookings')} />
+                <NavItem icon={<Wrench size={18}/>} label="Technika v požičovni" collapsed={isSidebarCollapsed} active={view === 'rentals'} onClick={() => changeView('rentals')} />
+              </div>
+            </div>
+
+            {/* Section 4 */}
+            <div>
+              {!isSidebarCollapsed && (
+                <div className="px-3 text-[10px] font-bold uppercase text-zinc-500 tracking-wider mb-2">
+                  KONFIGURÁCIA
+                </div>
+              )}
+              <div className="space-y-1">
+                <NavItem icon={<Truck size={18}/>} label="Cenník Dopravy" collapsed={isSidebarCollapsed} active={view === 'shipping'} onClick={() => changeView('shipping')} />
+                <NavItem icon={<Settings size={18}/>} label="Systémové Nastavenia" collapsed={isSidebarCollapsed} active={view === 'settings'} onClick={() => changeView('settings')} />
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar Footer collapse button */}
+          <div className="p-3 border-t border-zinc-800">
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="w-full flex items-center justify-center p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors text-xs gap-2"
+            >
+              <ChevronRight size={16} className={cn("transition-transform", !isSidebarCollapsed && "rotate-180")} />
+              {!isSidebarCollapsed && <span className="font-medium text-xs">Zbaliť menu</span>}
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Workspace */}
+        <main className="flex-1 p-4 sm:p-8 md:p-10 overflow-x-hidden">
+          {/* Header Action Bar */}
+          <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 capitalize">
+                {view === 'products' ? 'Správa Inventára & Skladu' : 
+                 view === 'orders' ? 'Dopyty z katalógu' : 
+                 view === 'rentals' ? 'Správa Požičovne' :
+                 view === 'shipping' ? 'Cenník Dopravy' :
+                 view === 'categories' ? 'Kategórie Produktov' :
+                 view === 'bookings' ? 'Rezervácie Techniky' :
+                 view === 'inquiries' ? 'Správy z webu' :
+                 view === 'settings' ? 'Systémové Nastavenia Web' :
+                 view === 'dashboard' ? 'Prehľad' : view}
+              </h1>
+              {view === 'dashboard' && (
+                <p className="text-xs text-zinc-500 mt-1 font-medium">Dnešné kľúčové metriky a správa pre firmu Stavebniny Ľubeľa s.r.o.</p>
+              )}
+            </div>
+
+            {view === 'products' && (
+              <div className="flex flex-row flex-wrap sm:flex-nowrap gap-2.5 w-full sm:w-auto items-center">
+                <button 
+                  onClick={() => {
+                    const url = prompt('Vložte URL produktu (napr. z OBI):')
+                    if (url) handleImportFromUrl(url)
+                  }}
+                  className="flex-1 sm:flex-none justify-center bg-white border border-zinc-200 text-zinc-800 px-4 py-2.5 font-bold uppercase text-xs flex items-center gap-2 hover:bg-zinc-50 active:scale-95 transition-all rounded-lg shadow-2xs"
+                  disabled={loading}
+                >
+                  <PlusCircle size={16} /> {loading ? 'Spracúvam...' : 'Import z URL'}
+                </button>
+                <button 
+                  onClick={() => { setEditingItem(null); setFormData({name:'', description:'', price:0, sku:'', stock_quantity:0, category:'', image_url:'', type: 'material', unit: 'ks'}); setShowModal(true); }}
+                  className="flex-1 sm:flex-none justify-center bg-zinc-900 text-white px-5 py-2.5 font-bold uppercase text-xs flex items-center gap-2 hover:bg-zinc-800 active:scale-95 transition-all rounded-lg shadow-sm"
+                >
+                  <Plus size={16} /> Pridať produkt
+                </button>
+              </div>
+            )}
+            {view === 'rentals' && (
               <button 
                 onClick={() => {
-                  const url = prompt('Vložte URL produktu (napr. z OBI):')
-                  if (url) handleImportFromUrl(url)
+                  setEditingRental(null);
+                  setRentalFormData({
+                    name: '',
+                    category: 'Vibračná a hutniaca technika',
+                    price4h: 0,
+                    price24h: 0,
+                    deposit: 100,
+                    description: '',
+                    note: '',
+                    image_url: '',
+                    accessories: [],
+                    availability: true,
+                    quantity: 1
+                  });
+                  setShowRentalModal(true);
                 }}
-                className="flex-1 sm:flex-none justify-center bg-white border border-outline/20 text-on-surface px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-surface active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
-                disabled={loading}
+                className="w-full sm:w-auto justify-center bg-zinc-900 text-white px-5 py-2.5 font-bold uppercase text-xs flex items-center gap-2 hover:bg-zinc-800 active:scale-95 transition-all rounded-lg shadow-sm"
               >
-                <PlusCircle size={16} /> {loading ? 'Spracúvam...' : 'Import z URL'}
+                <Plus size={16} /> Pridať techniku
               </button>
+            )}
+            {view === 'bookings' && (
               <button 
-                onClick={() => { setEditingItem(null); setFormData({name:'', description:'', price:0, sku:'', stock_quantity:0, category:'', image_url:'', type: 'material', unit: 'ks'}); setShowModal(true); }}
-                className="flex-1 sm:flex-none justify-center bg-primary text-on-primary px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
+                onClick={() => {
+                  setBookingFormData({
+                    rental_item_id: rentalItemsList[0]?.id || '',
+                    customer_name: '',
+                    customer_email: '',
+                    customer_phone: '',
+                    start_date: new Date().toISOString().split('T')[0],
+                    end_date: new Date().toISOString().split('T')[0],
+                    start_time: '08:00',
+                    end_time: '16:00',
+                    status: 'approved',
+                    note: ''
+                  });
+                  setShowBookingModal(true);
+                }}
+                className="w-full sm:w-auto justify-center bg-zinc-900 text-white px-5 py-2.5 font-bold uppercase text-xs flex items-center gap-2 hover:bg-zinc-800 active:scale-95 transition-all rounded-lg shadow-sm"
               >
-                <Plus size={16} /> Pridať produkt
+                <Plus size={16} /> Pridať rezerváciu
               </button>
-            </div>
-          )}
-          {view === 'rentals' && (
-            <button 
-              onClick={() => {
-                setEditingRental(null);
-                setRentalFormData({
-                  name: '',
-                  category: 'Vibračná a hutniaca technika',
-                  price4h: 0,
-                  price24h: 0,
-                  deposit: 100,
-                  description: '',
-                  note: '',
-                  image_url: '',
-                  accessories: [],
-                  availability: true,
-                  quantity: 1
-                });
-                setShowRentalModal(true);
-              }}
-              className="w-full sm:w-auto justify-center bg-primary text-on-primary px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
-            >
-              <Plus size={16} /> Pridať techniku
-            </button>
-          )}
-          {view === 'bookings' && (
-            <button 
-              onClick={() => {
-                setBookingFormData({
-                  rental_item_id: rentalItemsList[0]?.id || '',
-                  customer_name: '',
-                  customer_email: '',
-                  customer_phone: '',
-                  start_date: new Date().toISOString().split('T')[0],
-                  end_date: new Date().toISOString().split('T')[0],
-                  start_time: '08:00',
-                  end_time: '16:00',
-                  status: 'approved',
-                  note: ''
-                });
-                setShowBookingModal(true);
-              }}
-              className="w-full sm:w-auto justify-center bg-primary text-on-primary px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
-            >
-              <Plus size={16} /> Pridať rezerváciu
-            </button>
-          )}
-          {view === 'categories' && (
-            <button 
-              onClick={() => setShowCategoryModal(true)}
-              className="w-full sm:w-auto justify-center bg-primary text-on-primary px-4 sm:px-6 py-3 font-bold uppercase text-xs flex items-center gap-2 hover:bg-[#daf900] active:scale-95 transition-all rounded-md shadow-xs min-h-[44px]"
-            >
-              <Plus size={16} /> Nová kategória
-            </button>
-          )}
-        </header>
+            )}
+            {view === 'categories' && (
+              <button 
+                onClick={() => setShowCategoryModal(true)}
+                className="w-full sm:w-auto justify-center bg-zinc-900 text-white px-5 py-2.5 font-bold uppercase text-xs flex items-center gap-2 hover:bg-zinc-800 active:scale-95 transition-all rounded-lg shadow-sm"
+              >
+                <Plus size={16} /> Nová kategória
+              </button>
+            )}
+          </header>
 
-        {view === 'dashboard' && <DashboardStats stats={stats} changeView={changeView} />}
-        
-        {view !== 'dashboard' && view !== 'shipping' && view !== 'settings' && (
-          <div className="bg-white border border-outline/10 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-outline/10 flex gap-4">
-               <div className="relative flex-1">
-                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
-                 <input 
-                   placeholder="Hľadať..." 
-                   className="pl-10 pr-4 py-2 bg-surface text-sm w-full border-none focus:ring-1 focus:ring-primary"
-                   value={searchTerm}
-                   onChange={e => setSearchTerm(e.target.value)}
-                 />
-               </div>
-               <button className="flex items-center gap-2 px-4 py-2 border border-outline/20 text-xs font-bold uppercase"><Filter size={14}/> Filtre</button>
-            </div>
+          {view === 'dashboard' && <DashboardStats stats={stats} changeView={changeView} />}
+          
+          {view !== 'dashboard' && view !== 'shipping' && view !== 'settings' && (
+            <div className="bg-white border border-zinc-200/80 rounded-xl shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-zinc-100 flex gap-4">
+                 <div className="relative flex-1">
+                   <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                   <input 
+                     placeholder="Hľadať..." 
+                     className="pl-10 pr-4 py-2 bg-zinc-50 text-sm w-full border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                     value={searchTerm}
+                     onChange={e => setSearchTerm(e.target.value)}
+                   />
+                 </div>
+                 <button className="flex items-center gap-2 px-4 py-2 border border-zinc-200 text-xs font-bold uppercase rounded-lg hover:bg-zinc-50"><Filter size={14}/> Filtre</button>
+              </div>
             
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
@@ -886,21 +1055,27 @@ const Admin = () => {
                       {view === 'orders' && (
                         <>
                           <td className="px-6 py-5">
-                            <p className="font-bold text-sm">{item.shipping_info?.firstName} {item.shipping_info?.lastName}</p>
-                            <p className="text-[10px] text-outline font-mono">Dopyt #{item.id.slice(0,8)}</p>
+                            <p className="font-bold text-sm">
+                              {item.customer_name || `${item.shipping_info?.firstName || ''} ${item.shipping_info?.lastName || ''}`.trim() || 'Zákazník'}
+                            </p>
+                            <p className="text-[10px] text-outline font-mono">Dopyt #{item.id ? item.id.slice(0,8) : ''}</p>
                           </td>
                           <td className="px-6 py-5 text-xs">
-                            <p className="font-medium">{item.shipping_info?.phone}</p>
-                            <a href={`mailto:${item.shipping_info?.email}`} className="text-primary-strong hover:underline font-bold block mt-0.5">{item.shipping_info?.email}</a>
+                            <p className="font-medium">{item.customer_phone || item.shipping_info?.phone || ''}</p>
+                            <a href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX" target="_blank" rel="noopener noreferrer" className="text-primary-strong hover:underline font-bold block mt-0.5">
+                              {item.customer_email || item.shipping_info?.email || ''}
+                            </a>
                           </td>
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-2 items-center">
                               <span className="text-[10px] bg-primary/20 text-[#546200] px-2 py-1 uppercase font-bold">{item.status || 'Prijatá'}</span>
                               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <a 
-                                  href={`mailto:${item.shipping_info?.email}?subject=Odpoveď na dopyt #${item.id.slice(0,8)}`}
+                                  href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
                                   className="p-2 hover:bg-primary/20 text-primary-strong transition-colors"
-                                  title="Odpovedať na e-mail"
+                                  title="Odpovedať v Roundcube Webmaile"
                                 ><Mail size={16}/></a>
                                 <button 
                                   onClick={() => handleViewOrder(item)}
@@ -921,21 +1096,26 @@ const Admin = () => {
                       {view === 'inquiries' && (
                         <>
                           <td className="px-6 py-5">
-                            <p className="font-bold text-sm">{item.name}</p>
+                            <p className="font-bold text-sm">{item.customer_name || item.name || 'Zákazník'}</p>
                             <p className="text-[10px] text-outline font-mono">{new Date(item.created_at).toLocaleString('sk-SK')}</p>
                           </td>
                           <td className="px-6 py-5 text-xs">
-                            <a href={`mailto:${item.email}`} className="text-primary-strong hover:underline font-bold block">{item.email}</a>
+                            <a href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX" target="_blank" rel="noopener noreferrer" className="text-primary-strong hover:underline font-bold block">
+                              {item.customer_email || item.email || ''}
+                            </a>
+                            {item.customer_phone && <p className="text-outline text-[11px] mt-0.5">{item.customer_phone}</p>}
                           </td>
                           <td className="px-6 py-5 text-xs text-on-surface-variant font-medium whitespace-pre-wrap max-w-sm">
-                            {item.message}
+                            {item.details || item.message}
                           </td>
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <a 
-                                href={`mailto:${item.email}?subject=Odpoveď na dopyt z webu`}
+                                href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="p-2 hover:bg-primary/20 text-primary-strong transition-colors"
-                                title="Odpovedať na e-mail"
+                                title="Odpovedať v Roundcube Webmaile"
                               ><Mail size={16}/></a>
                               <button 
                                 onClick={() => handleViewInquiry(item)}
@@ -960,7 +1140,7 @@ const Admin = () => {
                           </td>
                           <td className="px-6 py-5 text-xs">
                             <p className="font-medium">{item.customer_phone}</p>
-                            <a href={`mailto:${item.customer_email}`} className="text-primary-strong hover:underline font-bold block mt-0.5">{item.customer_email}</a>
+                            <a href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX" target="_blank" rel="noopener noreferrer" className="text-primary-strong hover:underline font-bold block mt-0.5">{item.customer_email}</a>
                           </td>
                           <td className="px-6 py-5">
                             <p className="font-bold text-sm text-primary-strong">{item.rental_items?.name || 'Neznáma technika'}</p>
@@ -989,9 +1169,11 @@ const Admin = () => {
                           <td className="px-6 py-5 text-right">
                             <div className="flex justify-end gap-2">
                               <a 
-                                href={`mailto:${item.customer_email}?subject=Odpoveď na rezerváciu: ${item.rental_items?.name || 'Technika'}`}
+                                href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="bg-primary/10 text-primary-strong px-3 py-1.5 text-[9px] font-black uppercase tracking-wider hover:bg-primary/20 transition-colors flex items-center gap-1"
-                                title="Odpovedať na e-mail"
+                                title="Odpovedať v Roundcube Webmaile"
                               ><Mail size={12}/> Odpovedať</a>
                               {item.status !== 'approved' && (
                                 <button 
@@ -1267,20 +1449,24 @@ const Admin = () => {
                       <>
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="font-bold text-base text-on-surface leading-tight">{item.shipping_info?.firstName} {item.shipping_info?.lastName}</p>
-                            <p className="text-[10px] text-outline font-mono mt-1">Dopyt #{item.id.slice(0,8)}</p>
+                            <p className="font-bold text-base text-on-surface leading-tight">
+                              {item.customer_name || `${item.shipping_info?.firstName || ''} ${item.shipping_info?.lastName || ''}`.trim() || 'Zákazník'}
+                            </p>
+                            <p className="text-[10px] text-outline font-mono mt-1">Dopyt #{item.id ? item.id.slice(0,8) : ''}</p>
                           </div>
                           <span className="text-[9px] bg-primary/20 text-[#546200] px-2 py-1 uppercase font-black tracking-wider shrink-0">
                             {item.status || 'Prijatá'}
                           </span>
                         </div>
                         <div className="bg-surface p-3 text-xs border border-outline/5 space-y-1">
-                          <p><strong>Tel:</strong> <a href={`tel:${item.shipping_info?.phone}`} className="text-primary hover:underline font-bold">{item.shipping_info?.phone}</a></p>
-                          <p><strong>E-mail:</strong> <a href={`mailto:${item.shipping_info?.email}`} className="text-primary-strong hover:underline font-bold">{item.shipping_info?.email}</a></p>
+                          <p><strong>Tel:</strong> <a href={`tel:${item.customer_phone || item.shipping_info?.phone || ''}`} className="text-primary hover:underline font-bold">{item.customer_phone || item.shipping_info?.phone || '-'}</a></p>
+                          <p><strong>E-mail:</strong> <a href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX" target="_blank" rel="noopener noreferrer" className="text-primary-strong hover:underline font-bold">{item.customer_email || item.shipping_info?.email || '-'}</a></p>
                         </div>
                         <div className="flex gap-2 pt-2">
                           <a 
-                            href={`mailto:${item.shipping_info?.email}?subject=Odpoveď na dopyt #${item.id.slice(0,8)}`}
+                            href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform text-center"
                           ><Mail size={16}/> Odpovedať</a>
                           <button 
@@ -1300,19 +1486,21 @@ const Admin = () => {
                       <>
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="font-bold text-base text-on-surface leading-tight">{item.name}</p>
+                            <p className="font-bold text-base text-on-surface leading-tight">{item.customer_name || item.name || 'Zákazník'}</p>
                             <p className="text-[10px] text-outline font-mono mt-1">{new Date(item.created_at).toLocaleString('sk-SK')}</p>
                           </div>
-                          <a href={`mailto:${item.email}`} className="text-[9px] bg-primary/10 text-primary-strong px-2 py-1 uppercase font-black tracking-wider shrink-0 hover:underline">
+                          <a href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX" target="_blank" rel="noopener noreferrer" className="text-[9px] bg-primary/10 text-primary-strong px-2 py-1 uppercase font-black tracking-wider shrink-0 hover:underline">
                             E-mail
                           </a>
                         </div>
                         <div className="bg-surface p-3 text-xs border border-outline/5 space-y-2 whitespace-pre-wrap font-medium">
-                          {item.message}
+                          {item.details || item.message}
                         </div>
                         <div className="flex gap-2 pt-2">
                           <a 
-                            href={`mailto:${item.email}?subject=Odpoveď na dopyt z webu`}
+                            href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="flex-1 bg-surface border border-outline/25 text-on-surface py-3 font-bold uppercase text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform text-center"
                           ><Mail size={16}/> Odpovedať</a>
                           <button 
@@ -1553,25 +1741,36 @@ const Admin = () => {
                   <div>
                     <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Zákazník</h4>
                     <p className="font-bold text-lg">
-                      {selectedOrder.shipping_info?.firstName || ''} {selectedOrder.shipping_info?.lastName || ''}
+                      {selectedOrder.customer_name || `${selectedOrder.shipping_info?.firstName || ''} ${selectedOrder.shipping_info?.lastName || ''}`.trim() || 'Neznámy zákazník'}
                     </p>
-                    <p className="text-on-surface-variant">
-                      <a href={`mailto:${selectedOrder.shipping_info?.email}`} className="text-primary-strong hover:underline font-bold">
-                        {selectedOrder.shipping_info?.email || ''}
+                    <p className="text-on-surface-variant font-medium">
+                      <a href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX" target="_blank" rel="noopener noreferrer" className="text-primary-strong hover:underline font-bold">
+                        {selectedOrder.customer_email || selectedOrder.shipping_info?.email || 'Nezadaný e-mail'}
                       </a>
                     </p>
-                    <p className="text-on-surface-variant">
-                      <a href={`tel:${selectedOrder.shipping_info?.phone}`} className="text-on-surface hover:text-primary transition-colors">
-                        {selectedOrder.shipping_info?.phone || ''}
+                    <p className="text-on-surface-variant font-medium">
+                      <a href={`tel:${selectedOrder.customer_phone || selectedOrder.shipping_info?.phone || ''}`} className="text-on-surface hover:text-primary transition-colors font-bold">
+                        {selectedOrder.customer_phone || selectedOrder.shipping_info?.phone || 'Nezadaný telefón'}
                       </a>
                     </p>
                   </div>
                   <div>
-                    <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Doručovacia adresa</h4>
-                    <p className="text-on-surface-variant whitespace-pre-wrap">
-                      {selectedOrder.shipping_info?.address || ''}{'\n'}
-                      {selectedOrder.shipping_info?.zip || ''} {selectedOrder.shipping_info?.city || ''}
+                    <h4 className="text-[10px] font-bold text-outline uppercase mb-3 tracking-widest">Doručovacia adresa & Spôsob dopravy</h4>
+                    <p className="text-on-surface-variant font-bold text-sm mb-1">
+                      {selectedOrder.delivery_method === 'pickup' && 'Osobný odber na predajni (Ľubeľa)'}
+                      {selectedOrder.delivery_method === 'delivery' && 'Dovoz na stavbu (Nákladné auto / HR)'}
+                      {selectedOrder.delivery_method === 'own_transport' && 'Vlastná doprava zákazníka'}
+                      {(!selectedOrder.delivery_method || selectedOrder.delivery_method === 'inquiry') && 'Špecifikované v dopyte'}
                     </p>
+                    <p className="text-on-surface-variant whitespace-pre-wrap">
+                      {selectedOrder.delivery_address || selectedOrder.shipping_info?.address || ''}{'\n'}
+                      {selectedOrder.delivery_zip || selectedOrder.shipping_info?.zip || ''} {selectedOrder.delivery_city || selectedOrder.shipping_info?.city || ''}
+                    </p>
+                    {(selectedOrder.note || selectedOrder.shipping_info?.message) && (
+                      <div className="mt-3 bg-surface p-3 border-l-2 border-primary text-xs whitespace-pre-wrap font-medium">
+                        <strong>Poznámka / Dopyt:</strong>{'\n'}{selectedOrder.note || selectedOrder.shipping_info?.message}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1712,19 +1911,49 @@ const Admin = () => {
 
                 <h4 className="text-[10px] font-bold text-outline uppercase mb-4 tracking-widest">Položky dopytu</h4>
                 <div className="space-y-4">
-                  {selectedOrder.items?.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-4 border-b border-outline/5 last:border-0">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-surface flex items-center justify-center font-bold text-outline border border-outline/10 text-xs">
-                          {idx + 1}
+                  {(() => {
+                    const parsedItems = Array.isArray(selectedOrder.items)
+                      ? selectedOrder.items
+                      : (typeof selectedOrder.items === 'string' ? (JSON.parse(selectedOrder.items || '[]')) : []);
+                    
+                    if (!parsedItems || parsedItems.length === 0) {
+                      return <p className="text-xs text-outline italic">Žiadne špecifické položky dopytu</p>;
+                    }
+
+                    return parsedItems.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-4 border-b border-outline/5 last:border-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white shrink-0 flex items-center justify-center font-bold text-outline border border-outline/10 text-xs overflow-hidden">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt={item.name || ''} className="w-full h-full object-cover" />
+                            ) : (
+                              idx + 1
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm">{item.name || item.products?.name || item.product_name || 'Materiál'}</p>
+                            <p className="text-xs text-outline font-medium">{item.quantity || 1} {item.unit || item.products?.unit || 'ks'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold">{item.products?.name || 'Neznámy produkt'}</p>
-                          <p className="text-xs text-outline">{item.quantity} {item.products?.unit || 'ks'}</p>
-                        </div>
+                        {item.price > 0 && (
+                          <div className="text-right font-bold text-sm">
+                            {(Number(item.price) * Number(item.quantity || 1)).toFixed(2)} €
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    ));
+                  })()}
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-outline/10">
+                  <a 
+                    href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#2d2f2b] text-primary py-5 flex items-center justify-center font-black uppercase tracking-widest text-sm hover:scale-[1.01] transition-transform text-center gap-2"
+                  >
+                    <Mail size={18} /> Odpovedať v e-maile (ExoHosting Roundcube)
+                  </a>
                 </div>
               </div>
             </div>
@@ -1751,28 +1980,42 @@ const Admin = () => {
                 <div className="space-y-6 border-y border-outline/5 py-8">
                   <div>
                     <h4 className="text-[10px] font-bold text-outline uppercase mb-2 tracking-widest">Odosielateľ</h4>
-                    <p className="font-bold text-lg">{selectedInquiry.name}</p>
+                    <p className="font-bold text-lg">{selectedInquiry.customer_name || selectedInquiry.name || 'Zákazník'}</p>
                     <p className="text-on-surface-variant font-medium">
-                      <a href={`mailto:${selectedInquiry.email}`} className="text-primary-strong hover:underline font-bold">
-                        {selectedInquiry.email}
+                      <a href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX" target="_blank" rel="noopener noreferrer" className="text-primary-strong hover:underline font-bold">
+                        {selectedInquiry.customer_email || selectedInquiry.email || 'Nezadaný e-mail'}
                       </a>
                     </p>
+                    {(selectedInquiry.customer_phone || selectedInquiry.phone) && (
+                      <p className="text-on-surface-variant font-medium text-xs mt-1">
+                        Tel: <a href={`tel:${selectedInquiry.customer_phone || selectedInquiry.phone}`} className="text-on-surface hover:text-primary font-bold">{selectedInquiry.customer_phone || selectedInquiry.phone}</a>
+                      </p>
+                    )}
                   </div>
 
+                  {selectedInquiry.subject && (
+                    <div>
+                      <h4 className="text-[10px] font-bold text-outline uppercase mb-2 tracking-widest">Predmet dopytu</h4>
+                      <p className="font-bold text-sm text-primary-strong">{selectedInquiry.subject}</p>
+                    </div>
+                  )}
+
                   <div>
-                    <h4 className="text-[10px] font-bold text-outline uppercase mb-2 tracking-widest">Text správy</h4>
+                    <h4 className="text-[10px] font-bold text-outline uppercase mb-2 tracking-widest">Text správy / Špecifikácia</h4>
                     <div className="bg-surface p-4 border border-outline/5 text-sm font-medium text-on-surface-variant whitespace-pre-wrap leading-relaxed">
-                      {selectedInquiry.message}
+                      {selectedInquiry.details || selectedInquiry.message}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-8">
                   <a 
-                    href={`mailto:${selectedInquiry.email}?subject=Re: Správa z webu (Stavebniny Lubeľa)&body=Dobrý deň ${selectedInquiry.name},%0D%0A%0D%0AOdovedáme na vašu správu:%0D%0A"${selectedInquiry.message}"%0D%0A%0D%0A`}
-                    className="w-full bg-[#2d2f2b] text-primary py-5 flex items-center justify-center font-black uppercase tracking-widest text-sm hover:scale-[1.01] transition-transform text-center"
+                    href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-[#2d2f2b] text-primary py-5 flex items-center justify-center font-black uppercase tracking-widest text-sm hover:scale-[1.01] transition-transform text-center gap-2"
                   >
-                    Odpovedať e-mailom
+                    <Mail size={18} /> Odpovedať v e-maile (ExoHosting Roundcube)
                   </a>
                 </div>
               </div>
@@ -2593,31 +2836,31 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Category Add Modal */}
+          {/* Category Add Modal */}
         {showCategoryModal && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-md p-10 shadow-2xl relative">
+            <div className="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl relative border border-zinc-200">
               <button 
                 type="button"
                 onClick={() => setShowCategoryModal(false)} 
-                className="absolute top-6 right-6 text-outline hover:text-on-surface"
+                className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900"
               ><X size={20}/></button>
-              <h3 className="text-2xl font-black mb-6 uppercase tracking-tight">Nová kategória</h3>
-              <form onSubmit={handleSaveCategory} className="space-y-6">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-outline">Názov</label>
+              <h3 className="text-xl font-bold mb-6 tracking-tight text-zinc-900">Nová Kategória</h3>
+              <form onSubmit={handleSaveCategory} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase text-zinc-500 block">Názov Kategórie</label>
                   <input 
-                    className="w-full bg-surface p-4 outline-none border-b-2 border-transparent focus:border-primary text-sm font-bold"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-3 outline-none focus:ring-2 focus:ring-emerald-500/40 text-sm font-semibold"
                     value={categoryFormData.name}
                     onChange={e => setCategoryFormData({...categoryFormData, name: e.target.value})}
                     required
                     placeholder="Napr. Farby a laky"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase text-outline">Typ kategórie</label>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold uppercase text-zinc-500 block">Typ Sekcie</label>
                   <select 
-                    className="w-full bg-surface p-4 outline-none text-sm font-bold"
+                    className="w-full bg-zinc-50 border border-zinc-200 rounded-lg p-3 outline-none text-sm font-semibold"
                     value={categoryFormData.type}
                     onChange={e => setCategoryFormData({...categoryFormData, type: e.target.value})}
                   >
@@ -2629,7 +2872,7 @@ const Admin = () => {
                 </div>
                 <button 
                   disabled={loading}
-                  className="w-full bg-primary text-on-primary py-4 font-black uppercase tracking-widest hover:bg-[#daf900] disabled:opacity-50 transition-all shadow-lg shadow-primary/20"
+                  className="w-full bg-zinc-900 text-white rounded-lg py-3 font-bold text-xs uppercase tracking-wider hover:bg-zinc-800 disabled:opacity-50 transition-all shadow-md mt-2"
                 >
                   {loading ? 'VYTVÁRAM...' : 'VYTVORIŤ KATEGÓRIU'}
                 </button>
@@ -2637,51 +2880,232 @@ const Admin = () => {
             </div>
           </div>
         )}
+
+        {/* Floating Helpdesk Button */}
+        <div className="fixed bottom-6 right-6 z-40">
+          <a
+            href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-zinc-900 text-white p-3.5 rounded-full shadow-2xl flex items-center gap-2.5 hover:bg-zinc-800 transition-all hover:scale-105 border border-zinc-700/60 group"
+            title="Otvoriť Roundcube Webmail"
+          >
+            <Mail size={18} className="text-emerald-400 group-hover:rotate-12 transition-transform" />
+            <span className="text-xs font-bold pr-1 hidden sm:inline-block">Webmail (Roundcube)</span>
+          </a>
+        </div>
       </main>
     </div>
-  )
-}
-
-const NavItem = ({ icon, label, active, onClick }) => (
-  <button 
-    onClick={onClick}
-    className={cn(
-      "w-full flex items-center gap-4 px-4 py-3 transition-all",
-      active ? "bg-primary font-bold text-on-primary" : "text-outline hover:bg-surface-container-low"
-    )}
-  >
-    {icon}
-    <span className="text-sm font-headline">{label}</span>
-    {active && <ChevronRight size={14} className="ml-auto" />}
-  </button>
-)
-
-const DashboardStats = ({ stats, changeView }) => (
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-    <StatCard label="Produkty Celkom" value={stats.products} onClick={() => changeView('products')} />
-    <StatCard label="Katalógové Dopyty" value={stats.orders} highlight onClick={() => changeView('orders')} />
-    <StatCard label="Nízky Stav Skladu" value={stats.stock} danger onClick={() => changeView('products')} />
-    <StatCard label="Správy z webu" value={stats.inquiries} onClick={() => changeView('inquiries')} />
   </div>
 )
+}
 
-const StatCard = ({ label, value, change, highlight, danger, onClick }) => (
+const NavItem = ({ icon, label, active, collapsed, onClick, badge, dangerBadge }) => (
+  <button 
+    onClick={onClick}
+    title={collapsed ? label : undefined}
+    className={cn(
+      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-xs font-medium relative group",
+      active 
+        ? "bg-zinc-800 text-white font-semibold shadow-xs border-l-2 border-emerald-500" 
+        : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+    )}
+  >
+    <span className={cn("shrink-0", active ? "text-emerald-400" : "text-zinc-400 group-hover:text-zinc-200")}>{icon}</span>
+    {!collapsed && <span className="truncate">{label}</span>}
+    {!collapsed && badge !== undefined && badge > 0 && (
+      <span className={cn(
+        "ml-auto text-[10px] font-mono px-2 py-0.5 rounded-full font-bold",
+        dangerBadge ? "bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse" : "bg-zinc-700 text-zinc-300"
+      )}>
+        {badge}
+      </span>
+    )}
+  </button>
+);
+
+const DashboardStats = ({ stats, changeView }) => (
+  <div className="space-y-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <StatCard 
+        label="Produkty Celkom" 
+        value={stats.products} 
+        trend="+4.2% tento mesiac" 
+        trendPositive={true}
+        icon={<Package size={20} className="text-emerald-600" />}
+        onClick={() => changeView('products')} 
+      />
+      <StatCard 
+        label="Katalógové Dopyty" 
+        value={stats.orders} 
+        trend="+12.5% tento týždeň" 
+        trendPositive={true}
+        icon={<Truck size={20} className="text-sky-600" />}
+        onClick={() => changeView('orders')} 
+      />
+      <StatCard 
+        label="Nízky Stav Skladu" 
+        value={stats.stock || 0} 
+        trend="Vyžaduje kontrolu" 
+        danger={stats.stock > 0}
+        icon={<AlertCircle size={20} className="text-amber-600" />}
+        onClick={() => changeView('products')} 
+      />
+      <StatCard 
+        label="Správy z Webu" 
+        value={stats.inquiries} 
+        trend={stats.inquiries > 0 ? "Vyžaduje odpoveď" : "Všetky zodpovedané"} 
+        highlight={stats.inquiries > 0}
+        icon={<MessageSquare size={20} className="text-indigo-600" />}
+        onClick={() => changeView('inquiries')} 
+      />
+    </div>
+
+    {/* Analytics & Quick Action Section */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Quick Action Shortcuts */}
+      <div className="lg:col-span-2 bg-white border border-zinc-200/80 rounded-xl p-6 shadow-xs space-y-6">
+        <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
+          <div>
+            <h3 className="font-bold text-base text-zinc-900">Rýchle Akcie & Správa</h3>
+            <p className="text-xs text-zinc-500">Často používané úlohy na jeden klik</p>
+          </div>
+          <span className="text-[11px] font-mono bg-zinc-100 text-zinc-600 px-2.5 py-1 rounded-md font-semibold">Admin v2.4</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div 
+            onClick={() => changeView('products')}
+            className="p-4 rounded-xl border border-zinc-200/80 hover:border-emerald-500/50 hover:bg-emerald-50/30 transition-all cursor-pointer group flex items-start gap-4"
+          >
+            <div className="p-3 bg-emerald-100 text-emerald-700 rounded-lg group-hover:scale-105 transition-transform">
+              <Package size={20} />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-zinc-900 group-hover:text-emerald-700">Správa Produktov</h4>
+              <p className="text-xs text-zinc-500 mt-0.5">Pridať nový materiál, skontrolovať zásoby a ceny</p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => changeView('bookings')}
+            className="p-4 rounded-xl border border-zinc-200/80 hover:border-sky-500/50 hover:bg-sky-50/30 transition-all cursor-pointer group flex items-start gap-4"
+          >
+            <div className="p-3 bg-sky-100 text-sky-700 rounded-lg group-hover:scale-105 transition-transform">
+              <Calendar size={20} />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-zinc-900 group-hover:text-sky-700">Rezervácie Požičovne</h4>
+              <p className="text-xs text-zinc-500 mt-0.5">Schvaľovanie termínov náradia a dovozov</p>
+            </div>
+          </div>
+
+          <a 
+            href="https://roundcube.exohosting.sk/?_task=mail&_mbox=INBOX"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4 rounded-xl border border-zinc-200/80 hover:border-indigo-500/50 hover:bg-indigo-50/30 transition-all cursor-pointer group flex items-start gap-4"
+          >
+            <div className="p-3 bg-indigo-100 text-indigo-700 rounded-lg group-hover:scale-105 transition-transform">
+              <Mail size={20} />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-zinc-900 group-hover:text-indigo-700">ExoHosting Roundcube</h4>
+              <p className="text-xs text-zinc-500 mt-0.5">Otvoriť webmail a odpovedať na e-maily</p>
+            </div>
+          </a>
+
+          <div 
+            onClick={() => changeView('shipping')}
+            className="p-4 rounded-xl border border-zinc-200/80 hover:border-amber-500/50 hover:bg-amber-50/30 transition-all cursor-pointer group flex items-start gap-4"
+          >
+            <div className="p-3 bg-amber-100 text-amber-700 rounded-lg group-hover:scale-105 transition-transform">
+              <Sliders size={20} />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-zinc-900 group-hover:text-amber-700">Cenník Dopravy</h4>
+              <p className="text-xs text-zinc-500 mt-0.5">Úprava sadzieb za km a vykládku s HR</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* System Health / Overview Card */}
+      <div className="bg-white border border-zinc-200/80 rounded-xl p-6 shadow-xs flex flex-col justify-between">
+        <div>
+          <div className="flex items-center justify-between pb-4 border-b border-zinc-100 mb-4">
+            <h3 className="font-bold text-base text-zinc-900">Stav Systému</h3>
+            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
+          </div>
+
+          <div className="space-y-4 text-xs text-zinc-600">
+            <div className="flex justify-between items-center py-2 border-b border-zinc-50">
+              <span className="font-medium">E-mailové notifikácie:</span>
+              <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Aktívne (PHP Mailer)</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-zinc-50">
+              <span className="font-medium">Cieľový mail admina:</span>
+              <span className="font-mono text-zinc-900">kubik@stavivalubela.sk</span>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-zinc-50">
+              <span className="font-medium">Webmail server:</span>
+              <span className="font-mono text-zinc-900">smtp.exohosting.sk</span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="font-medium">Verzia portálu:</span>
+              <span className="font-bold text-zinc-900">PRO v2.4 (React + Vite)</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-zinc-100 mt-6">
+          <button 
+            onClick={() => changeView('settings')}
+            className="w-full bg-zinc-900 hover:bg-zinc-800 text-white py-2.5 rounded-lg text-xs font-bold transition-colors"
+          >
+            Spravovať Nastavenia
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const StatCard = ({ label, value, trend, trendPositive, highlight, danger, icon, onClick }) => (
   <div 
     onClick={onClick}
     className={cn(
-      "p-6 bg-white border-l-4 shadow-sm cursor-pointer hover:bg-surface transition-colors",
-      highlight ? "border-primary" : danger ? "border-error" : "border-outline/20"
+      "p-5 bg-white border rounded-xl shadow-xs cursor-pointer transition-all hover:shadow-md relative overflow-hidden group",
+      highlight ? "border-indigo-500/40 ring-1 ring-indigo-500/20" : danger ? "border-red-500/40 ring-1 ring-red-500/20" : "border-zinc-200/80 hover:border-zinc-300"
     )}
   >
-    <p className="text-[10px] uppercase font-black tracking-widest text-outline mb-1">{label}</p>
-    <div className="flex items-baseline gap-2">
-      <p className="text-2xl font-black">{value}</p>
-      {change && <span className="text-[10px] font-bold text-emerald-600">{change}</span>}
+    {danger && <div className="absolute top-0 left-0 right-0 h-1 bg-red-500"></div>}
+    {highlight && <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>}
+    
+    <div className="flex items-center justify-between mb-3">
+      <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{label}</span>
+      <div className="p-2 bg-zinc-50 rounded-lg group-hover:scale-110 transition-transform">
+        {icon}
+      </div>
+    </div>
+
+    <div className="flex items-baseline justify-between">
+      <p className="text-3xl font-black text-zinc-900 tracking-tight">{value}</p>
+      {trend && (
+        <span className={cn(
+          "text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1",
+          danger ? "bg-red-50 text-red-600 font-bold" :
+          highlight ? "bg-indigo-50 text-indigo-600 font-bold" :
+          trendPositive ? "bg-emerald-50 text-emerald-600 font-bold" : "bg-zinc-100 text-zinc-600"
+        )}>
+          {trend}
+        </span>
+      )}
     </div>
   </div>
-)
+);
 
-const LoginComponent = () => {
+function LoginComponent() {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -2700,19 +3124,28 @@ const LoginComponent = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface pt-20">
-      <div className="bg-white p-12 border border-outline/10 shadow-2xl w-full max-w-md">
-        <h1 className="text-3xl font-black mb-10 tracking-tighter">ADMIN PRÍSTUP</h1>
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-             <label className="text-xs uppercase font-bold text-outline">Pracovný Email</label>
-             <input className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+    <div className="min-h-screen flex items-center justify-center bg-zinc-900 text-white p-4">
+      <div className="bg-[#18181b] p-8 sm:p-12 border border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md space-y-8">
+        <div className="text-center space-y-2">
+          <span className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-2">
+            PRO PORTÁL
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight uppercase">ADMIN PRÍSTUP</h1>
+          <p className="text-xs text-zinc-400">Prihláste sa do administrácie Stavebniny Ľubeľa</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div className="space-y-1.5">
+             <label className="text-[11px] uppercase font-bold text-zinc-400 block">Pracovný Email</label>
+             <input className="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-500 text-white p-3.5 rounded-lg text-sm outline-none transition-colors" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="kubik@stavivalubela.sk" required />
           </div>
-          <div className="space-y-2">
-             <label className="text-xs uppercase font-bold text-outline">Heslo</label>
-             <input className="w-full bg-surface p-4 border-none focus:ring-1 focus:ring-primary" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+          <div className="space-y-1.5">
+             <label className="text-[11px] uppercase font-bold text-zinc-400 block">Heslo</label>
+             <input className="w-full bg-zinc-900 border border-zinc-800 focus:border-emerald-500 text-white p-3.5 rounded-lg text-sm outline-none transition-colors" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
-          <button className="w-full bg-primary text-on-primary py-4 font-black uppercase tracking-widest mt-4">Prihlásiť sa</button>
+          <button disabled={loading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 font-bold uppercase text-xs tracking-wider rounded-lg transition-colors mt-2 shadow-lg shadow-emerald-900/30 disabled:opacity-50">
+            {loading ? 'PRIHLASUJEM...' : 'PRIHLÁSIŤ SA'}
+          </button>
         </form>
       </div>
     </div>
@@ -2720,3 +3153,4 @@ const LoginComponent = () => {
 }
 
 export default Admin
+

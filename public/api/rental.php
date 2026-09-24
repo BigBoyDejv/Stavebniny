@@ -105,6 +105,13 @@ if ($action === 'bookings') {
 
     if ($method === 'POST') {
         $input = getJsonInput();
+
+        // Honeypot anti-spam check
+        if (!empty($input['_honeypot'])) {
+            echo json_encode(['success' => true, 'id' => 'spam-' . time(), 'status' => 'new', 'spam' => true]);
+            exit();
+        }
+
         $stmt = $pdo->prepare("
             INSERT INTO rental_bookings (
                 rental_item_id, customer_name, customer_email, customer_phone,
@@ -135,7 +142,14 @@ if ($action === 'bookings') {
             'delivery_price' => $input['delivery_price'] ?? 0,
             'note' => $input['note'] ?? ''
         ]);
-        echo json_encode($stmt->fetch());
+        $booking = $stmt->fetch();
+        try {
+            require_once __DIR__ . '/mailer.php';
+            sendRentalNotification($booking);
+        } catch (Throwable $e) {
+            // Mail error fallback
+        }
+        echo json_encode($booking);
         exit();
     }
 
@@ -152,6 +166,20 @@ if ($action === 'bookings') {
         $stmt = $pdo->prepare("UPDATE rental_bookings SET status = :status WHERE id = :id RETURNING *");
         $stmt->execute(['status' => $status, 'id' => $id]);
         echo json_encode($stmt->fetch());
+        exit();
+    }
+
+    if ($method === 'DELETE') {
+        checkAdminAuth();
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing ID']);
+            exit();
+        }
+        $stmt = $pdo->prepare("DELETE FROM rental_bookings WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        echo json_encode(['success' => true]);
         exit();
     }
 }

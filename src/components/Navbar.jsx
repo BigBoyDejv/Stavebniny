@@ -8,6 +8,11 @@ import { cn } from '../lib/utils'
 
 const Navbar = () => {
   const location = useLocation()
+  
+  if (location.pathname === '/admin') {
+    return null
+  }
+
   const { totalItems, setIsCartOpen, addToCart } = useCart()
   const { settings } = useSettings()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
